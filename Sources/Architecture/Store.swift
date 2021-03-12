@@ -3,17 +3,18 @@ import SwiftUI
 import Combine
 
 // MARK: Store
-class Store<State, Action, Environment>: ObservableObject {
+@available(iOS 13, macOS 10.15, *)
+public class Store<State, Action, Environment>: ObservableObject {
     private(set) var state: State { didSet { if debug { print(state) } } }
     private let environment: Environment
     private let reducer: (inout State, Action, Environment) -> AnyPublisher<Action, Never>?
     private let debug: Bool
     
-    let objectWillChange = ObservableObjectPublisher()
+    public let objectWillChange = ObservableObjectPublisher()
     
     private var cancellables: [AnyCancellable] = []
     
-    init(
+    public init(
         initialState: State,
         reducer: @escaping (inout State, Action, Environment) -> AnyPublisher<Action, Never>?,
         environment: Environment,
@@ -25,7 +26,7 @@ class Store<State, Action, Environment>: ObservableObject {
         self.debug = debug
     }
     
-    func send(_ action: Action, muted: Bool = false) {
+    public func send(_ action: Action, muted: Bool = false) {
         if let effect = reducer(&state, action, environment) {
             effect.receive(on: DispatchQueue.main)
                 .sink { [unowned self] result in
@@ -38,7 +39,8 @@ class Store<State, Action, Environment>: ObservableObject {
         }
     }
     
-    func binding<LocalState>(
+    @available(iOS 14, macOS 11.0, *)
+    public func binding<LocalState>(
         get: @escaping (State) -> LocalState,
         send localState: @escaping (LocalState) -> Action
         ) -> Binding<LocalState> {
