@@ -5,7 +5,7 @@ import Combine
 // MARK: Store
 @available(iOS 13, macOS 10.15, *)
 public class Store<State, Action, Environment>: ObservableObject {
-    private(set) var state: State { didSet { if debug { print(state) } } }
+    public private(set) var state: State { didSet { if debug { print(state) } } }
     private let environment: Environment
     private let reducer: (inout State, Action, Environment) -> AnyPublisher<Action, Never>?
     private let debug: Bool
