@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  Utility.swift
 //  
 //
 //  Created by Jackson Utsch on 3/12/21.
@@ -26,6 +26,14 @@ public func ??<T>(lhs: Binding<Optional<T>>, rhs: T) -> Binding<T> {
         get: { lhs.wrappedValue ?? rhs },
         set: { lhs.wrappedValue = $0 }
     )
+}
+
+// MARK: Optional Collection Subscripting
+extension Collection {
+    /// Returns the element at the specified index if it is within bounds, otherwise nil.
+    subscript (safe index: Index) -> Element? {
+        return indices.contains(index) ? self[index] : nil
+    }
 }
 
 // MARK: Frame Shorthand
