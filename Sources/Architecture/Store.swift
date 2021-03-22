@@ -1,3 +1,10 @@
+//
+//  Store.swift
+//
+//
+//  Created by Jackson Utsch on 3/12/21.
+//
+
 import Foundation
 import SwiftUI
 import Combine
@@ -12,8 +19,9 @@ public class Store<State, Action, Environment>: ObservableObject {
     
     public let objectWillChange = ObservableObjectPublisher()
     private var cancellables: [AnyCancellable] = []
-    
-    public var debug: Debug = .none
+        
+    private var actionsDebug: DebugLevel = .none
+    private var stateChangeDebug: DebugLevel = .none
     
     public init(
         initialState: State,
@@ -26,6 +34,10 @@ public class Store<State, Action, Environment>: ObservableObject {
     }
     
     public func send(_ action: Action, muted: Bool = false) {
+        if case let .some(level) = actionsDebug {
+            Log.custom(level: level, message: action)
+        }
+        
         let tempState = state
         if let effect = reducer(&state, action, environment) {
             effect.receive(on: DispatchQueue.main)
@@ -38,8 +50,27 @@ public class Store<State, Action, Environment>: ObservableObject {
             }
         }
         
-        if case let .some(level) = debug {
+        if case let .some(level) = stateChangeDebug {
             Log.custom(level: level, message: "\n" + "\(self.self) \n" + dumpDiff(state, tempState).joined() + "\n")
+        }
+    }
+    
+    /// establish logging preferences
+    public func debug(_ debug: Debug) {
+        switch debug {
+        case .none:
+            actionsDebug = .none
+            stateChangeDebug = .none
+        case .some(let type):
+            switch type {
+            case .actions(let level):
+                actionsDebug = level
+            case .stateChanges(let level):
+                stateChangeDebug = level
+            case .actionsAndStateChanges(let actions, let stateChanges):
+                actionsDebug = actions
+                stateChangeDebug = stateChanges
+            }
         }
     }
     
@@ -98,7 +129,7 @@ public class Store<State, Action, Environment>: ObservableObject {
 //        return localStore
 //    }
     
-    /// scoped store that observes the parent and send changes
+    /// scoped store that observes and sends changes to the parent
     public func scope<LocalState, LocalAction, LocalEnvironment>(
         localEnvironment: LocalEnvironment,
         toLocalState: @escaping (State) -> LocalState?,
@@ -123,13 +154,5 @@ public class Store<State, Action, Environment>: ObservableObject {
                 }
             }.store(in: &cancellables)
         return localStore
-    }
-}
-
-// MARK: Types
-extension Store {
-    public enum Debug {
-        case none
-        case some(SwiftyBeaver.Level)
     }
 }
