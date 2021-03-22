@@ -7,7 +7,24 @@
 
 import Foundation
 
-// XCTest incorporation https://forums.swift.org/t/dynamically-call-xctfail-in-spm-module-without-importing-xctest/36375
+// MARK: Assert
+public extension Store {
+    @discardableResult
+    func assert
+    (
+        action: Action,
+        meeetsExpectations: @escaping (State) -> Bool
+    ) -> Self {
+        send(action)
+        if meeetsExpectations(state) == false {
+            _XCTFail()
+        }
+        return self
+    }
+}
+
+// MARK: XCTest Incorporation
+// https://forums.swift.org/t/dynamically-call-xctfail-in-spm-module-without-importing-xctest/36375
 // NB: Dynamically load XCTest to prevent leaking its symbols into our library code.
 private func _XCTFail(_ message: String = "", file: StaticString = #file, line: UInt = #line) {
   guard
@@ -46,19 +63,3 @@ private let _XCTCurrentTestCase =
   _XCTest
   .flatMap { dlsym($0, "_XCTCurrentTestCase") }
   .map({ unsafeBitCast($0, to: XCTCurrentTestCase.self) })
-
-// MARK: Assert
-public extension Store {
-    @discardableResult
-    func assert
-    (
-        action: Action,
-        meeetsExpectations: @escaping (State) -> Bool
-    ) -> Self {
-        send(action)
-        if meeetsExpectations(state) == false {
-            _XCTFail()
-        }
-        return self
-    }
-}
