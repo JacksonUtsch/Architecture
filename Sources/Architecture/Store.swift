@@ -108,6 +108,16 @@ public class Store<State, Action, Environment>: ObservableObject {
         )
     }
     
+    /// callback for local state on state changes
+    public func observe<LocalState>(
+        get: @escaping (State) -> LocalState,
+        callback: @escaping (LocalState) -> ()
+    ) {
+        $state.map { get($0) }
+            .sink { callback($0) }
+            .store(in: &cancellables)
+    }
+    
 //    public func scope<LocalState, LocalAction, LocalEnvironment>(
 //        localEnvironment: LocalEnvironment,
 //        toLocalState: @escaping (State) -> LocalState,
