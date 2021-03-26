@@ -28,16 +28,27 @@ public func ??<T>(lhs: Binding<Optional<T>>, rhs: T) -> Binding<T> {
     )
 }
 
-// MARK: Optional Collection Subscripting
+// MARK: Optional Subscripting
 public extension Collection {
     /// Returns the element at the specified index if it is within bounds, otherwise nil.
-    subscript (safe index: Index?) -> Element? {
+    subscript(safe index: Index?) -> Element? {
         guard let index = index else {
             return nil
         }
         return indices.contains(index) ? self[index] : nil
     }
 }
+
+public extension Array where Element: Identifiable {
+    /// Returns the first element with the specefied id, otherwise nil.
+    subscript(safe id: Element.ID?) -> Element? {
+        guard let id = id else {
+            return nil
+        }
+        return self.filter({$0.id == id}).first
+    }
+}
+
 
 // MARK: Frame Shorthand
 public extension View {

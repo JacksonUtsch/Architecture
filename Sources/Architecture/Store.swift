@@ -51,7 +51,10 @@ public class Store<State, Action, Environment>: ObservableObject {
         }
         
         if case let .some(level) = stateChangeDebug {
-            Log.custom(level: level, message: "\n" + "\(self.self) \n" + dumpDiff(state, tempState).joined() + "\n")
+            let diff = dumpDiff(state, tempState).joined()
+            if diff.count > 0 {
+                Log.custom(level: level, message: "\n" + "\(self.self) \n" + diff + "\n")
+            }
         }
     }
     
@@ -160,6 +163,7 @@ public class Store<State, Action, Environment>: ObservableObject {
                 if self != nil {
                     if let newLocalState = toLocalState(self!.state) {
                         localStore?.state = newLocalState
+                        localStore?.objectWillChange.send()
                     }
                 }
             }.store(in: &cancellables)
