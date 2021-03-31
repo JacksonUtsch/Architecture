@@ -73,3 +73,10 @@ public extension CGSize {
         return Swift.max(self.width, self.height)
     }
 }
+
+// MARK: Constructor Enum
+public enum Constructor {
+    case empty
+    case `default`
+    case preview
+}
