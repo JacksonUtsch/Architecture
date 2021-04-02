@@ -20,8 +20,8 @@ public class Store<State, Action, Environment>: ObservableObject {
     public let objectWillChange = ObservableObjectPublisher()
     private var cancellables: [AnyCancellable] = []
         
-    private var actionsDebug: DebugLevel = .none
-    private var stateChangeDebug: DebugLevel = .none
+    private var actionsDebug: Log.Level? = nil
+    private var stateChangeDebug: Log.Level? = nil
     
     public init(
         initialState: State,
@@ -34,7 +34,7 @@ public class Store<State, Action, Environment>: ObservableObject {
     }
     
     public func send(_ action: Action, muted: Bool = false) {
-        if case let .some(level) = actionsDebug {
+        if let level = actionsDebug {
             DispatchQueue.global(qos: .utility).async {
                 Log.custom(level: level, message: action)
             }
@@ -52,7 +52,7 @@ public class Store<State, Action, Environment>: ObservableObject {
             }
         }
         
-        if case let .some(level) = stateChangeDebug {
+        if let level = stateChangeDebug {
             DispatchQueue.global(qos: .utility).async { [unowned self] in
                 let diff = dumpDiff(state, tempState).joined()
                 if diff.count > 0 {
@@ -63,22 +63,9 @@ public class Store<State, Action, Environment>: ObservableObject {
     }
     
     /// establish logging preferences
-    public func debug(_ debug: Debug) {
-        switch debug {
-        case .none:
-            actionsDebug = .none
-            stateChangeDebug = .none
-        case .some(let type):
-            switch type {
-            case .actions(let level):
-                actionsDebug = level
-            case .stateChanges(let level):
-                stateChangeDebug = level
-            case .actionsAndStateChanges(let actions, let stateChanges):
-                actionsDebug = actions
-                stateChangeDebug = stateChanges
-            }
-        }
+    public func debug(actions: Log.Level? = nil, stateChanges: Log.Level? = nil) {
+        self.actionsDebug = actions
+        self.stateChangeDebug = stateChanges
     }
     
     /// state binding with action

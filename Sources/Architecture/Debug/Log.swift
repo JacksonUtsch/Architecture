@@ -17,22 +17,3 @@ public extension Log {
     typealias Local = FileDestination
     typealias Remote = SBPlatformDestination
 }
-
-// MARK: Debug Types
-public extension Store {
-    enum Debug {
-        case none
-        case some(DebugType)
-    }
-    
-    enum DebugType {
-        case actions(DebugLevel)
-        case stateChanges(DebugLevel)
-        case actionsAndStateChanges(_ actions: DebugLevel, _ stateChanges: DebugLevel)
-    }
-    
-    enum DebugLevel {
-        case none
-        case some(SwiftyBeaver.Level)
-    }
-}
