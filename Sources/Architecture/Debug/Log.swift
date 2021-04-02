@@ -13,7 +13,7 @@ import SwiftyBeaver
 public typealias Log = SwiftyBeaver
 
 public extension Log {
-    typealias Xcode = ConsoleDestination
+    typealias Console = ConsoleDestination
     typealias Local = FileDestination
     typealias Remote = SBPlatformDestination
 }
