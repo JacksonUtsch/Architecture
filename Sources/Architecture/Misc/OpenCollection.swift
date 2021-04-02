@@ -65,6 +65,27 @@ public extension OpenCollection where C == Array<E>, C.Element: Identifiable {
         index = collection.firstIndex(where: {$0.id == id})
     }
     
+    mutating func close(at i: Int) {
+        guard let closingIndex = collection.indices.firstIndex(where: {$0 == i}) else {
+            return
+        }
+        collection.remove(at: closingIndex)
+        
+        guard let index = self.index else {
+            return
+        }
+        
+        if index >= closingIndex {
+            if index - 1 >= 0 {
+                self.index = index - 1
+            } else {
+                if collection.count <= 0 {
+                    self.index = nil
+                }
+            }
+        }
+    }
+    
     mutating func close(with id: C.Element.ID) {
         guard let closingIndex = collection.firstIndex(where: {$0.id == id}) else {
             return
@@ -100,6 +121,30 @@ public struct OpenArray<T: Identifiable>: OpenCollection {
     }
 }
 
+extension OpenArray: Codable where T: Codable {
+    
+}
+
+public extension OpenArray {
+    enum Specifier {
+        case current
+        case using(T.ID)
+    }
+    
+    func findIndex(using specifier: Specifier) -> C.Index? {
+        var index: C.Index!
+        switch specifier {
+        case .current:
+            guard let current = self.index else { return nil }
+            index = current
+        case .using(let id):
+            guard let current = self.collection.firstIndex(where: {$0.id == id}) else { return nil }
+            index = current
+        }
+        return index
+    }
+}
+
 // MARK: NavigationalArray
 public struct NavigationalArray<T: Identifiable>: OpenCollection {
     public typealias C = [T]
@@ -113,7 +158,8 @@ public struct NavigationalArray<T: Identifiable>: OpenCollection {
     }
     
     /// retruns true if successful
-    mutating func pull() -> Bool {
+    @discardableResult
+    public mutating func pull() -> Bool {
         guard let index = index else {
             return false
         }
@@ -126,7 +172,8 @@ public struct NavigationalArray<T: Identifiable>: OpenCollection {
     }
     
     /// retruns true if successful
-    mutating func push() -> Bool {
+    @discardableResult
+    public mutating func push() -> Bool {
         guard let index = index else {
             if self.collection.count > 0 {
                 self.index = 0
@@ -141,4 +188,8 @@ public struct NavigationalArray<T: Identifiable>: OpenCollection {
         self.index = index + 1
         return true
     }
+}
+
+extension NavigationalArray: Codable where T: Codable {
+    
 }

@@ -35,7 +35,9 @@ public class Store<State, Action, Environment>: ObservableObject {
     
     public func send(_ action: Action, muted: Bool = false) {
         if case let .some(level) = actionsDebug {
-            Log.custom(level: level, message: action)
+            DispatchQueue.global(qos: .utility).async {
+                Log.custom(level: level, message: action)
+            }
         }
         
         let tempState = state
@@ -51,9 +53,11 @@ public class Store<State, Action, Environment>: ObservableObject {
         }
         
         if case let .some(level) = stateChangeDebug {
-            let diff = dumpDiff(state, tempState).joined()
-            if diff.count > 0 {
-                Log.custom(level: level, message: "\n" + "\(self.self) \n" + diff + "\n")
+            DispatchQueue.global(qos: .utility).async { [unowned self] in
+                let diff = dumpDiff(state, tempState).joined()
+                if diff.count > 0 {
+                    Log.custom(level: level, message: "\n" + "\(self.self) \n" + diff + "\n")
+                }
             }
         }
     }
