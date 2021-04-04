@@ -49,7 +49,6 @@ public extension Array where Element: Identifiable {
     }
 }
 
-
 // MARK: Frame Shorthand
 public extension View {
     func width(_ value: CGFloat) -> some View {

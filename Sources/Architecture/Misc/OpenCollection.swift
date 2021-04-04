@@ -41,22 +41,7 @@ public extension OpenCollection where C == Array<E>, C.Element: Identifiable {
         self.collection = []
         self.index = nil
     }
-    
-    mutating func new(_ element: C.Element) {
-        guard let index = index else {
-            if collection.isEmpty {
-                collection = [element]
-                self.index = 0
-            } else {
-                collection.insert(element, at: 0)
-            }
-            return
-        }
         
-        self.collection.insert(element, at: index)
-        self.index = index + 1
-    }
-    
     mutating func open(using id: C.Element.ID?) {
         guard let id = id else {
             index = nil
@@ -86,7 +71,7 @@ public extension OpenCollection where C == Array<E>, C.Element: Identifiable {
         }
     }
     
-    mutating func close(with id: C.Element.ID) {
+    mutating func close(using id: C.Element.ID) {
         guard let closingIndex = collection.firstIndex(where: {$0.id == id}) else {
             return
         }
@@ -129,9 +114,27 @@ public extension OpenArray {
     enum Specifier {
         case current
         case using(T.ID)
+        case at(C.Index)
     }
     
-    func findIndex(using specifier: Specifier) -> C.Index? {
+    mutating func new(_ element: C.Element) {
+        guard let index = index else {
+            print("no index")
+            if collection.isEmpty {
+                collection = [element]
+                self.index = 0
+            } else {
+                collection.insert(element, at: 0)
+            }
+            return
+        }
+        print("has index")
+        
+        self.collection.insert(element, at: index + 1)
+        self.index = index + 1
+    }
+    
+    func findIndex(with specifier: Specifier) -> C.Index? {
         var index: C.Index!
         switch specifier {
         case .current:
@@ -140,13 +143,38 @@ public extension OpenArray {
         case .using(let id):
             guard let current = self.collection.firstIndex(where: {$0.id == id}) else { return nil }
             index = current
+        case .at(let i):
+            return i
         }
         return index
+    }
+    
+    mutating func open(with specifier: Specifier) {
+        switch specifier {
+        case .current:
+            self.index = findIndex(with: specifier)
+        case .using(let id):
+            self.open(using: id)
+        case .at(let index):
+            self.index = index
+        }
+    }
+    
+    mutating func close(with specifier: Specifier) {
+        switch specifier {
+        case .current:
+            guard let current = self.index else { return }
+            self.close(at: current)
+        case .using(let id):
+            self.close(using: id)
+        case .at(let index):
+            self.close(at: index)
+        }
     }
 }
 
 // MARK: NavigationalArray
-public struct NavigationalArray<T: Identifiable>: OpenCollection {
+public struct NavigationalArray<T: Identifiable & Equatable>: OpenCollection {
     public typealias C = [T]
     public typealias E = C.Element
     public var collection: C
@@ -155,6 +183,27 @@ public struct NavigationalArray<T: Identifiable>: OpenCollection {
     public init(_ collection: C, at index: C.Index?) {
         self.collection = collection
         self.index = index
+    }
+    
+    public mutating func new(_ element: C.Element) {
+        guard element != current else {
+            return
+        }
+        
+        guard let index = index else {
+            print("no index")
+            if collection.isEmpty {
+                collection = [element]
+                self.index = 0
+            } else {
+                collection.insert(element, at: 0)
+            }
+            return
+        }
+        print("has index")
+        
+        self.collection.insert(element, at: index + 1)
+        self.index = index + 1
     }
     
     /// retruns true if successful

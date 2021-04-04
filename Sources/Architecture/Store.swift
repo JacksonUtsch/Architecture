@@ -19,7 +19,7 @@ public class Store<State, Action, Environment>: ObservableObject {
     
     public let objectWillChange = ObservableObjectPublisher()
     private var cancellables: [AnyCancellable] = []
-        
+    
     private var actionsDebug: Log.Level? = nil
     private var stateChangeDebug: Log.Level? = nil
     
@@ -33,7 +33,7 @@ public class Store<State, Action, Environment>: ObservableObject {
         self.environment = environment
     }
     
-    public func send(_ action: Action, muted: Bool = false) {
+    public func send(_ action: Action) {
         if let level = actionsDebug {
             DispatchQueue.global(qos: .utility).async {
                 Log.custom(level: level, message: action)
@@ -46,10 +46,6 @@ public class Store<State, Action, Environment>: ObservableObject {
                 .sink { [unowned self] result in
                     self.send(result)
                 }.store(in: &cancellables)
-        } else {
-            if muted == false {
-                objectWillChange.send()
-            }
         }
         
         if let level = stateChangeDebug {
@@ -102,7 +98,7 @@ public class Store<State, Action, Environment>: ObservableObject {
         )
     }
     
-    /// callback for local state on state changes
+    /// callback for local state on state changes including declaration
     public func observe<LocalState>(
         get: @escaping (State) -> LocalState,
         callback: @escaping (LocalState) -> ()
@@ -111,27 +107,6 @@ public class Store<State, Action, Environment>: ObservableObject {
             .sink { callback($0) }
             .store(in: &cancellables)
     }
-    
-//    public func scope<LocalState, LocalAction, LocalEnvironment>(
-//        localEnvironment: LocalEnvironment,
-//        toLocalState: @escaping (State) -> LocalState,
-//        fromLocalAction: @escaping (LocalAction) -> Action
-//    ) -> Store<LocalState, LocalAction, LocalEnvironment> {
-//        let localStore = Store<LocalState, LocalAction, LocalEnvironment>(
-//            initialState: toLocalState(self.state),
-//            reducer: { localState, localAction, localEnvironment in
-//                self.send(fromLocalAction(localAction))
-//                localState = toLocalState(self.state)
-//                return nil
-//            }, environment: localEnvironment)
-//        self.objectWillChange.receive(on: DispatchQueue.main)
-//            .sink { [weak localStore, weak self] _ in
-//                if self != nil {
-//                    localStore?.state = toLocalState(self!.state)
-//                }
-//            }.store(in: &cancellables)
-//        return localStore
-//    }
     
     /// scoped store that observes and sends changes to the parent
     public func scope<LocalState, LocalAction, LocalEnvironment>(
@@ -160,4 +135,8 @@ public class Store<State, Action, Environment>: ObservableObject {
             }.store(in: &cancellables)
         return localStore
     }
+}
+
+public struct EmptyEnvironment {
+    public init() { }
 }

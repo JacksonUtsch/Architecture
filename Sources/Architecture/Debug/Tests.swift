@@ -12,12 +12,24 @@ public extension Store {
     @discardableResult
     func assert
     (
-        action: Action,
-        meeetsExpectations: @escaping (State) -> Bool
+        _ action: Action? = nil,
+        that expectation: @escaping (State) -> Bool,
+        with delay: Double? = nil
     ) -> Self {
-        send(action)
-        if meeetsExpectations(state) == false {
-            _XCTFail()
+        if let action = action {
+            send(action)
+        }
+        
+        guard let delay = delay else {
+            if expectation(self.state) == false {
+                _XCTFail()
+            }
+            return self
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            if expectation(self.state) == false {
+                _XCTFail()
+            }
         }
         return self
     }
