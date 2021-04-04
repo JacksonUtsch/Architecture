@@ -117,19 +117,13 @@ public class Store<State, Action, Environment>: ObservableObject {
             initialState: toLocalState(self.state)!,
             reducer: { localState, localAction, localEnvironment in
                 self.send(fromLocalAction(localAction))
-                if let newLocalState = toLocalState(self.state) {
-                    localState = newLocalState
-                }
                 return nil
             }, environment: localEnvironment)
         
-        self.objectWillChange.receive(on: DispatchQueue.main)
-            .sink { [weak localStore, weak self] _ in
-                if self != nil {
-                    if let newLocalState = toLocalState(self!.state) {
-                        localStore?.state = newLocalState
-                        localStore?.objectWillChange.send()
-                    }
+        self.$state.receive(on: DispatchQueue.main)
+            .sink { [weak localStore] newState in
+                if let newLocalState = toLocalState(newState) {
+                    localStore?.state = newLocalState
                 }
             }.store(in: &cancellables)
         return localStore

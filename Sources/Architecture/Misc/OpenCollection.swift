@@ -128,7 +128,6 @@ public extension OpenArray {
             }
             return
         }
-        print("has index")
         
         self.collection.insert(element, at: index + 1)
         self.index = index + 1
@@ -185,25 +184,34 @@ public struct NavigationalArray<T: Identifiable & Equatable>: OpenCollection {
         self.index = index
     }
     
+    // MARK: Need to fix destructive indexing..
     public mutating func new(_ element: C.Element) {
         guard element != current else {
             return
         }
         
         guard let index = index else {
-            print("no index")
             if collection.isEmpty {
                 collection = [element]
                 self.index = 0
             } else {
                 collection.insert(element, at: 0)
+                for i in collection.indices.reversed() {
+                    if i > 0 {
+                        collection.remove(at: i)
+                    }
+                }
             }
             return
         }
-        print("has index")
         
         self.collection.insert(element, at: index + 1)
         self.index = index + 1
+        for i in collection.indices.reversed() {
+            if i > index + 1 {
+                collection.remove(at: i)
+            }
+        }
     }
     
     /// retruns true if successful
