@@ -1,3 +1,3 @@
 # Architecture
 
-A description of this package.
+Redux based architecture package for Swift with functionality as seen fit
