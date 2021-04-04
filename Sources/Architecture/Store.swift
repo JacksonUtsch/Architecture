@@ -17,7 +17,6 @@ public class Store<State, Action, Environment>: ObservableObject {
     private let environment: Environment
     private let reducer: (inout State, Action, Environment) -> AnyPublisher<Action, Never>?
     
-    public let objectWillChange = ObservableObjectPublisher()
     private var cancellables: [AnyCancellable] = []
     
     private var actionsDebug: Log.Level? = nil
