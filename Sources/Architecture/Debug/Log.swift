@@ -1,6 +1,6 @@
 //
 //  Log.swift
-//  
+//  Architecture
 //
 //  Created by Jackson Utsch on 3/20/21.
 //

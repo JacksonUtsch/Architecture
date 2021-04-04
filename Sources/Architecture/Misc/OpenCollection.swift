@@ -1,6 +1,6 @@
 //
-//  File.swift
-//  
+//  OpenCollection.swift
+//  Architecture
 //
 //  Created by Jackson Utsch on 3/29/21.
 //
