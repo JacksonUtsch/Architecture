@@ -14,7 +14,7 @@ public extension Store {
     (
         _ action: Action? = nil,
         that expectation: @escaping (State) -> Bool,
-        with delay: Double? = nil
+        with delay: DispatchQueue.SchedulerTimeType.Stride? = nil
     ) -> Self {
         if let action = action {
             send(action)
@@ -26,9 +26,9 @@ public extension Store {
             }
             return self
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+        scheduler.schedule(after: scheduler.now.advanced(by: delay)) {
             if expectation(self.state) == false {
-                _XCTFail()
+                _XCTFail("")
             }
         }
         return self

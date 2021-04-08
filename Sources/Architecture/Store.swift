@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 import Combine
 import SwiftyBeaver
+import CombineSchedulers
 
 // MARK: Store
 @available(iOS 13, macOS 10.15, *)
@@ -16,6 +17,7 @@ public class Store<State, Action, Environment>: ObservableObject {
     @Published public private(set) var state: State
     private let environment: Environment
     private let reducer: (inout State, Action, Environment) -> AnyPublisher<Action, Never>?
+    internal let scheduler: AnySchedulerOf<DispatchQueue>
     
     private var cancellables: [AnyCancellable] = []
     
@@ -25,11 +27,24 @@ public class Store<State, Action, Environment>: ObservableObject {
     public init(
         initialState: State,
         reducer: @escaping (inout State, Action, Environment) -> AnyPublisher<Action, Never>?,
-        environment: Environment
+        environment: Environment,
+        scheduler: AnySchedulerOf<DispatchQueue> = .main
     ) {
         self.state = initialState
         self.reducer = reducer
         self.environment = environment
+        self.scheduler = scheduler
+    }
+    
+    private convenience init?(
+        initialState: State?,
+        reducer: @escaping (inout State, Action, Environment) -> AnyPublisher<Action, Never>?,
+        environment: Environment
+    ) {
+        guard let initialState = initialState else {
+            return nil
+        }
+        self.init(initialState: initialState, reducer: reducer, environment: environment)
     }
     
     public func send(_ action: Action) {
@@ -41,7 +56,7 @@ public class Store<State, Action, Environment>: ObservableObject {
         
         let tempState = state
         if let effect = reducer(&state, action, environment) {
-            effect.receive(on: DispatchQueue.main)
+            effect.receive(on: scheduler)
                 .sink { [unowned self] result in
                     self.send(result)
                 }.store(in: &cancellables)
@@ -120,13 +135,37 @@ public class Store<State, Action, Environment>: ObservableObject {
                 return nil
             }, environment: localEnvironment)
         
-        self.$state.receive(on: DispatchQueue.main)
+        self.$state.receive(on: scheduler)
             .sink { [weak localStore] newState in
                 if let newLocalState = toLocalState(newState) {
                     localStore?.state = newLocalState
                 }
             }.store(in: &cancellables)
         return localStore
+    }
+    
+    /// scoped store that observes and sends changes to the parent
+    public func optionalScope<LocalState, LocalAction, LocalEnvironment>(
+        localEnvironment: LocalEnvironment,
+        toLocalState: @escaping (State) -> LocalState?,
+        fromLocalAction: @escaping (LocalAction) -> Action
+    ) -> Store<LocalState, LocalAction, LocalEnvironment>? {
+        if let localStore = Store<LocalState, LocalAction, LocalEnvironment>(
+            initialState: toLocalState(self.state),
+            reducer: { localState, localAction, localEnvironment in
+                self.send(fromLocalAction(localAction))
+                return nil
+            }, environment: localEnvironment) {
+
+            self.$state.receive(on: scheduler)
+                .sink { [weak localStore] newState in
+                    if let newLocalState = toLocalState(newState) {
+                        localStore?.state = newLocalState
+                    }
+                }.store(in: &cancellables)
+            return localStore            
+        }
+        return nil
     }
 }
 

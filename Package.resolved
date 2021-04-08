@@ -3,11 +3,11 @@
     "pins": [
       {
         "package": "SwiftyBeaver",
-        "repositoryURL": "https://github.com/SwiftyBeaver/SwiftyBeaver.git",
+        "repositoryURL": "https://github.com/JacksonUtsch/SwiftyBeaver.git",
         "state": {
-          "branch": null,
-          "revision": "2c513a2e8fbfbd6495afc4a05941d8e3fdba68e9",
-          "version": "1.9.3"
+          "branch": "master",
+          "revision": "1da7e86d242dacc06aede0f6428fa262d455d708",
+          "version": null
         }
       }
     ]
