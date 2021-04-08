@@ -41,7 +41,7 @@ public extension OpenCollection where C == Array<E>, C.Element: Identifiable {
         self.collection = []
         self.index = nil
     }
-        
+    
     mutating func open(using id: C.Element.ID?) {
         guard let id = id else {
             index = nil
@@ -133,25 +133,35 @@ public extension OpenArray {
         self.index = index + 1
     }
     
-    func findIndex(with specifier: Specifier) -> C.Index? {
-        var index: C.Index!
+    func index(from specifier: Specifier) -> C.Index? {
         switch specifier {
         case .current:
             guard let current = self.index else { return nil }
-            index = current
+            return current
         case .using(let id):
             guard let current = self.collection.firstIndex(where: {$0.id == id}) else { return nil }
-            index = current
+            return current
         case .at(let i):
             return i
         }
-        return index
+    }
+    
+    func id(from specifier: Specifier) -> T.ID? {
+        switch specifier {
+        case .current:
+            guard let current = self.index else { return nil }
+            return self.collection[safe: current]?.id
+        case .using(let id):
+            return id
+        case .at(let i):
+            return self.collection[safe: i]?.id
+        }
     }
     
     mutating func open(with specifier: Specifier) {
         switch specifier {
         case .current:
-            self.index = findIndex(with: specifier)
+            self.index = index(from: specifier)
         case .using(let id):
             self.open(using: id)
         case .at(let index):
