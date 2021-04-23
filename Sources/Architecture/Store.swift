@@ -15,7 +15,7 @@ import CombineSchedulers
 @available(iOS 13, macOS 10.15, *)
 public class Store<State, Action, Environment>: ObservableObject {
     @Published public private(set) var state: State
-    private let environment: Environment
+    public let environment: Environment
     private let reducer: (inout State, Action, Environment) -> AnyPublisher<Action, Never>?
     internal let scheduler: AnySchedulerOf<DispatchQueue>
     
