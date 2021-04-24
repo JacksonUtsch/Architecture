@@ -8,6 +8,7 @@
 import Foundation
 import XCTestDynamicOverlay
 
+#if DEBUG
 // MARK: Assert
 public extension Store {
     @discardableResult
@@ -35,3 +36,4 @@ public extension Store {
         return self
     }
 }
+#endif

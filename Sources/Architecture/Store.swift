@@ -13,8 +13,8 @@ import CombineSchedulers
 
 // MARK: Store
 @available(iOS 13, macOS 10.15, *)
-public class Store<State, Action, Environment>: ObservableObject {
-    @Published public private(set) var state: State
+public class Store<State: Equatable, Action, Environment>: ObservableObject {
+    @UniquePublished public private(set) var state: State
     private let environment: Environment
     private let reducer: (inout State, Action, Environment) -> AnyPublisher<Action, Never>?
     internal let scheduler: AnySchedulerOf<DispatchQueue>
@@ -124,7 +124,7 @@ public class Store<State, Action, Environment>: ObservableObject {
     
     /// scoped store that observes and sends changes to the parent
     public func scope<LocalState, LocalAction, LocalEnvironment>(
-        localEnvironment: LocalEnvironment,
+        toLocalEnvironment: @escaping (Environment) -> LocalEnvironment,
         toLocalState: @escaping (State) -> LocalState?,
         fromLocalAction: @escaping (LocalAction) -> Action
     ) -> Store<LocalState, LocalAction, LocalEnvironment> {
@@ -133,7 +133,7 @@ public class Store<State, Action, Environment>: ObservableObject {
             reducer: { localState, localAction, localEnvironment in
                 self.send(fromLocalAction(localAction))
                 return nil
-            }, environment: localEnvironment)
+            }, environment: toLocalEnvironment(environment))
         
         self.$state.receive(on: scheduler)
             .sink { [weak localStore] newState in
@@ -146,7 +146,7 @@ public class Store<State, Action, Environment>: ObservableObject {
     
     /// scoped store that observes and sends changes to the parent
     public func optionalScope<LocalState, LocalAction, LocalEnvironment>(
-        localEnvironment: LocalEnvironment,
+        toLocalEnvironment: @escaping (Environment) -> LocalEnvironment,
         toLocalState: @escaping (State) -> LocalState?,
         fromLocalAction: @escaping (LocalAction) -> Action
     ) -> Store<LocalState, LocalAction, LocalEnvironment>? {
@@ -155,7 +155,7 @@ public class Store<State, Action, Environment>: ObservableObject {
             reducer: { localState, localAction, localEnvironment in
                 self.send(fromLocalAction(localAction))
                 return nil
-            }, environment: localEnvironment) {
+            }, environment: toLocalEnvironment(environment)) {
 
             self.$state.receive(on: scheduler)
                 .sink { [weak localStore] newState in
