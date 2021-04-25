@@ -168,7 +168,3 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
         return nil
     }
 }
-
-public struct EmptyEnvironment {
-    public init() { }
-}

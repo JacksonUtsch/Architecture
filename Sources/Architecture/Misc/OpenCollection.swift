@@ -94,7 +94,7 @@ public extension OpenCollection where C == Array<E>, C.Element: Identifiable {
 }
 
 // MARK: OpenArray
-public struct OpenArray<T: Identifiable>: OpenCollection {
+public struct OpenArray<T: Identifiable & Equatable>: OpenCollection {
     public typealias C = [T]
     public typealias E = C.Element
     public var collection: C
