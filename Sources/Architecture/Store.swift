@@ -72,47 +72,13 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
         }
     }
     
-    /// establish logging preferences
+    /// Establishes logging preferences
     public func debug(actions: Log.Level? = nil, stateChanges: Log.Level? = nil) {
         self.actionsDebug = actions
         self.stateChangeDebug = stateChanges
     }
-    
-    /// state binding with action
-    @available(iOS 14, macOS 11.0, *)
-    public func binding<LocalState>(
-        get: @escaping (State) -> LocalState,
-        send localState: @escaping (LocalState) -> Action
-        ) -> Binding<LocalState> {
-        Binding(
-            get: { get(self.state) },
-            set: { newLocalState, transaction in
-                if transaction.animation != nil {
-                  withTransaction(transaction) {
-                    self.send(localState(newLocalState))
-                  }
-                } else {
-                    self.send(localState(newLocalState))
-                }
-            }
-        )
-    }
-    
-    /// state binding with callback
-    @available(iOS 14, macOS 11.0, *)
-    public func binding<LocalState>(
-        get: @escaping (State) -> LocalState,
-        callback: @escaping (LocalState) -> ()
-        ) -> Binding<LocalState> {
-        Binding(
-            get: { get(self.state) },
-            set: { newLocalState in
-                callback(newLocalState)
-            }
-        )
-    }
-    
-    /// callback for local state on state changes including declaration
+        
+    /// Callback for local state on state changes including declaration
     public func observe<LocalState>(
         get: @escaping (State) -> LocalState,
         callback: @escaping (LocalState) -> ()
@@ -121,15 +87,18 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
             .sink { callback($0) }
             .store(in: &cancellables)
     }
-    
-    /// scoped store that observes and sends changes to the parent
-    public func scope<LocalState, LocalAction, LocalEnvironment>(
-        toLocalEnvironment: @escaping (Environment) -> LocalEnvironment,
-        toLocalState: @escaping (State) -> LocalState?,
-        fromLocalAction: @escaping (LocalAction) -> Action
+}
+
+// MARK: Substores
+extension Store {
+    /// Scoped store that observes and sends changes to the parent
+    public func substore<LocalState, LocalAction, LocalEnvironment>(
+        state toLocalState: @escaping (State) -> LocalState,
+        action fromLocalAction: @escaping (LocalAction) -> Action,
+        env toLocalEnvironment: @escaping (Environment) -> LocalEnvironment
     ) -> Store<LocalState, LocalAction, LocalEnvironment> {
         let localStore = Store<LocalState, LocalAction, LocalEnvironment>(
-            initialState: toLocalState(self.state)!,
+            initialState: toLocalState(self.state),
             reducer: { localState, localAction, localEnvironment in
                 self.send(fromLocalAction(localAction))
                 return nil
@@ -137,18 +106,20 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
         
         self.$state.receive(on: scheduler)
             .sink { [weak localStore] newState in
-                if let newLocalState = toLocalState(newState) {
-                    localStore?.state = newLocalState
-                }
+                localStore?.state = toLocalState(newState)
             }.store(in: &cancellables)
         return localStore
     }
-    
-    /// scoped store that observes and sends changes to the parent
-    public func optionalScope<LocalState, LocalAction, LocalEnvironment>(
-        toLocalEnvironment: @escaping (Environment) -> LocalEnvironment,
-        toLocalState: @escaping (State) -> LocalState?,
-        fromLocalAction: @escaping (LocalAction) -> Action
+
+    /**
+     Scoped store that observes and sends changes to the parent
+     
+     Used for destructive components such as nested state
+    */
+    public func subscriptStore<LocalState, LocalAction, LocalEnvironment>(
+        state toLocalState: @escaping (State) -> LocalState?,
+        action fromLocalAction: @escaping (LocalAction) -> Action,
+        env toLocalEnvironment: @escaping (Environment) -> LocalEnvironment
     ) -> Store<LocalState, LocalAction, LocalEnvironment>? {
         if let localStore = Store<LocalState, LocalAction, LocalEnvironment>(
             initialState: toLocalState(self.state),
@@ -163,8 +134,62 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
                         localStore?.state = newLocalState
                     }
                 }.store(in: &cancellables)
-            return localStore            
+            return localStore
         }
         return nil
+    }
+}
+
+// MARK: Bindings
+extension Store {
+    /// SwiftUI Binding with action
+    @available(iOS 14, macOS 11.0, *)
+    public func binding<LocalState>(
+        get: @escaping (State) -> LocalState,
+        send localState: @escaping (LocalState) -> Action
+        ) -> Binding<LocalState> {
+        let binding = Binding(
+            get: { get(self.state) },
+            set: { newLocalState, transaction in
+                if transaction.animation != nil {
+                  withTransaction(transaction) {
+                    self.send(localState(newLocalState))
+                  }
+                } else {
+                    self.send(localState(newLocalState))
+                }
+            }
+        )
+        return binding
+    }
+    
+    /// SwiftUI Binding with callback
+    @available(iOS 14, macOS 11.0, *)
+    public func binding<LocalState>(
+        get: @escaping (State) -> LocalState,
+        callback: @escaping (LocalState) -> ()
+        ) -> Binding<LocalState> {
+        Binding(
+            get: { get(self.state) },
+            set: { newLocalState in
+                callback(newLocalState)
+            }
+        )
+    }
+}
+
+public typealias StoreBinding<S: Equatable> = Store<S, S, Void>
+
+extension StoreBinding {
+    public convenience init(constant: State) {
+        self.init(initialState: constant, reducer: {_,_,_ in nil}, environment: () as! Environment)
+    }
+}
+
+extension Store {
+    public func storeBinding<LocalState: Equatable>(
+        get: @escaping (State) -> LocalState,
+        set: @escaping (LocalState) -> Action) -> StoreBinding<LocalState> {
+        return substore(state: get, action: set, env: {_ in})
     }
 }
