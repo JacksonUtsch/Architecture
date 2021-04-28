@@ -106,6 +106,13 @@ public struct OpenArray<T: Identifiable & Equatable>: OpenCollection {
     }
 }
 
+extension OpenArray: Equatable {
+    static public func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.collection == rhs.collection &&
+        lhs.index == rhs.index
+    }
+}
+
 extension OpenArray: Codable where T: Codable {
     
 }
@@ -254,6 +261,13 @@ public struct NavigationalArray<T: Identifiable & Equatable>: OpenCollection {
         }
         self.index = index + 1
         return true
+    }
+}
+
+extension NavigationalArray: Equatable {
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.collection == rhs.collection &&
+        lhs.index == rhs.index
     }
 }
 

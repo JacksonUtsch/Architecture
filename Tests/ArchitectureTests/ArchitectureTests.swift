@@ -4,7 +4,7 @@ import Combine
 import CombineSchedulers
 
 final class ArchitectureTests: XCTestCase {
-    let testStore = TestStore(initialState: TestState(), reducer: testReducer(state:action:env:), environment: EmptyEnvironment(), scheduler: .immediate)
+    let testStore = TestStore(initialState: TestState(), reducer: testReducer(state:action:env:), environment: (), scheduler: .immediate)
     
     func testBasic() {
         testStore
@@ -38,9 +38,9 @@ final class ArchitectureTests: XCTestCase {
     
     func testScope() {
         // a scoped store sends actions to parent and doesn't resolve immediatly, hence the test uses a delay
-        let scopedStore = testStore.scope(localEnvironment: EmptyEnvironment(),
-                                          toLocalState: {$0.substate},
-                                          fromLocalAction: { TestAction.substate($0) })
+        let scopedStore = testStore.substore(state: { $0.substate },
+                                             action: { TestAction.substate($0) },
+                                             env: {_ in})
         
         scopedStore.assert(.insert(Substate.IdentifiableInt(value: 5)),
                         that: {$0.contents.collection.count == 2},
@@ -49,7 +49,7 @@ final class ArchitectureTests: XCTestCase {
         // without being scoped, the changes can be asserted immediatly
         let standaloneStore = SubstateStore(initialState: Substate(contents: .init([], at: nil)),
                                             reducer: substateReducer(state:action:env:),
-                                            environment: EmptyEnvironment())
+                                            environment: ())
         
         standaloneStore.assert(.insert(Substate.IdentifiableInt(value: 5)),
                                that: {$0.contents.current?.value == 5})
@@ -57,13 +57,13 @@ final class ArchitectureTests: XCTestCase {
 }
 
 // MARK: Store
-typealias TestStore = Store<TestState, TestAction, EmptyEnvironment>
+typealias TestStore = Store<TestState, TestAction, Void>
 extension TestStore {
-    static let shared = TestStore(initialState: TestState(), reducer: testReducer(state:action:env:), environment: EmptyEnvironment())
+    static let shared = TestStore(initialState: TestState(), reducer: testReducer(state:action:env:), environment: ())
 }
 
 // MARK: Reducer
-func testReducer(state: inout TestState, action: TestAction, env: EmptyEnvironment) -> AnyPublisher<TestAction, Never>? {
+func testReducer(state: inout TestState, action: TestAction, env: Void) -> AnyPublisher<TestAction, Never>? {
     switch action {
     case .add:
         state.number += 1
@@ -76,14 +76,14 @@ func testReducer(state: inout TestState, action: TestAction, env: EmptyEnvironme
         return Just(TestAction.add)
             .eraseToAnyPublisher()
     case .substate(let secondary):
-        return substateReducer(state: &state.substate, action: secondary, env: EmptyEnvironment())?
+        return substateReducer(state: &state.substate, action: secondary, env: ())?
             .map(TestAction.substate)
             .eraseToAnyPublisher()
     }
 }
 
 // MARK: State
-struct TestState {
+struct TestState: Equatable {
     var number: Int = 0
     var name: String = "intial name"
     var substate: Substate = .init(contents: OpenArray<Substate.IdentifiableInt>.init([Substate.IdentifiableInt(value: 5)], at: 0))
@@ -99,10 +99,10 @@ enum TestAction {
 
 
 // MARK: SubstateStore
-typealias SubstateStore = Store<Substate, SubstateAction, EmptyEnvironment>
+typealias SubstateStore = Store<Substate, SubstateAction, Void>
 
 // MARK: Substate Reducer
-func substateReducer(state: inout Substate, action: SubstateAction, env: EmptyEnvironment) -> AnyPublisher<SubstateAction, Never>? {
+func substateReducer(state: inout Substate, action: SubstateAction, env: Void) -> AnyPublisher<SubstateAction, Never>? {
     switch action {
     case .insert(let item):
         state.contents.new(item)
@@ -111,12 +111,16 @@ func substateReducer(state: inout Substate, action: SubstateAction, env: EmptyEn
 }
 
 // MARK: Substate
-struct Substate {
+struct Substate: Equatable {
     var contents: OpenArray<IdentifiableInt>
-    
-    struct IdentifiableInt: Identifiable {
+        
+    struct IdentifiableInt: Equatable, Identifiable {
         let id = UUID()
         let value: Int
+        
+        static func == (lhs: IdentifiableInt, rhs: IdentifiableInt) -> Bool {
+            return lhs.value == rhs.value
+        }
     }
 }
 
