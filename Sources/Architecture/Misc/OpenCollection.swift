@@ -139,6 +139,14 @@ public extension OpenArray {
         self.collection.insert(element, at: index + 1)
         self.index = index + 1
     }
+  
+  mutating func insert(
+    _ element: C.Element,
+    at position: C.Index
+  ) {
+    self.collection.insert(element, at: position)
+    self.index = position
+  }
     
     func index(from specifier: Specifier) -> C.Index? {
         switch specifier {
