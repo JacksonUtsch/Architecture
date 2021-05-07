@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import SwiftUI
 
 // MARK: Optional Contains
 public extension Optional where Wrapped: Collection, Wrapped.Element: Equatable {
@@ -18,14 +17,6 @@ public extension Optional where Wrapped: Collection, Wrapped.Element: Equatable 
     }
     return false
   }
-}
-
-// MARK: Optional Binding
-public func ??<T>(lhs: Binding<Optional<T>>, rhs: T) -> Binding<T> {
-  Binding(
-    get: { lhs.wrappedValue ?? rhs },
-    set: { lhs.wrappedValue = $0 }
-  )
 }
 
 // MARK: Optional Subscripting
@@ -49,19 +40,6 @@ public extension Array where Element: Identifiable {
   }
 }
 
-// MARK: Frame Shorthand
-public extension View {
-  func width(_ value: CGFloat) -> some View {
-    self
-      .frame(width: value)
-  }
-  
-  func height(_ value: CGFloat) -> some View {
-    self
-      .frame(height: value)
-  }
-}
-
 // MARK: CGSize
 public extension CGSize {
   var short: CGFloat {
@@ -78,19 +56,6 @@ public enum Constructor {
   case empty
   case `default`
   case preview
-}
-
-// MARK: Color hex
-extension Color {
-  public init(hex: UInt, alpha: Double = 1) {
-    self.init(
-      .sRGB,
-      red: Double((hex >> 16) & 0xff) / 255,
-      green: Double((hex >> 08) & 0xff) / 255,
-      blue: Double((hex >> 00) & 0xff) / 255,
-      opacity: alpha
-    )
-  }
 }
 
 // MARK: setMap

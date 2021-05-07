@@ -1,6 +1,6 @@
 //
 //  UniquePublished.swift
-//  
+//  Architecture
 //
 //  Created by Jackson Utsch on 4/24/21.
 //
