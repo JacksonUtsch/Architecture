@@ -11,7 +11,7 @@ import SwiftUI
 
 final class ExtensionTests: XCTestCase {
   func testHexColor() {
-    XCTAssertEqual(Color.white, Color.init(hex: 0xFFFFFF))
-    XCTAssertEqual(Color.black, Color.init(hex: 0x000000))
+    XCTAssertEqual(Color.white.hashValue, Color.init(hex: 0xFFFFFF).hashValue)
+    XCTAssertEqual(Color.black.hashValue, Color.init(hex: 0x000000).hashValue)
   }
 }
