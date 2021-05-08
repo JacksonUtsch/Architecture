@@ -51,13 +51,6 @@ public extension CGSize {
   }
 }
 
-// MARK: Constructor Enum
-public enum Constructor {
-  case empty
-  case `default`
-  case preview
-}
-
 // MARK: setMap
 extension Set {
   func setMap<U>(transform: (Element) -> U) -> Set<U> {

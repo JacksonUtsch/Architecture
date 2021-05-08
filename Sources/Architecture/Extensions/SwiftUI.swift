@@ -40,3 +40,42 @@ extension Color {
     )
   }
 }
+
+// MARK: GeometryBinding
+public extension View {
+  /**
+   Bind any `CGFloat` value within a `GeometryProxy` value
+   to an external binding.
+   */
+  func bindGeometry(
+    to binding: Binding<CGRect>,
+    reader: @escaping (GeometryProxy) -> CGRect) -> some View {
+    self.background(GeometryBinding(reader: reader))
+      .onPreferenceChange(GeometryPreference.self) {
+        binding.wrappedValue = $0
+    }
+  }
+}
+
+public struct GeometryBinding: View {
+  let reader: (GeometryProxy) -> CGRect
+  public var body: some View {
+    GeometryReader { geo in
+      Color.clear.preference(
+        key: GeometryPreference.self,
+        value: self.reader(geo)
+      )
+    }
+  }
+}
+
+public struct GeometryPreference: PreferenceKey {
+  public typealias Value = CGRect
+  public static var defaultValue: CGRect = .zero
+  public static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+    let nValue = nextValue()
+    if value.width * value.height <= nValue.width * nValue.height {
+      value = nValue
+    }
+  }
+}
