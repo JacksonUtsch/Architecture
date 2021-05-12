@@ -197,3 +197,29 @@ extension Store {
     return substore(state: get, action: set, env: {_ in})
   }
 }
+
+// MARK: ConditionalStoreView
+public struct ConditionalStoreView<State: Equatable, Action, Environment, Content: View, ElseContent: View>: View {
+  let store: Store<State, Action, Environment>?
+  let content: (Store<State, Action, Environment>) -> Content
+  let elseContent: () -> ElseContent
+  public init(
+    store: Store<State, Action, Environment>?,
+    content: @escaping (Store<State, Action, Environment>) -> Content,
+    elseContent: @escaping () -> ElseContent
+  ) {
+    self.store = store
+    self.content = content
+    self.elseContent = elseContent
+  }
+  
+  public var body: some View {
+    Group {
+      if let store = store {
+        content(store)
+      } else {
+        elseContent()
+      }
+    }
+  }
+}
