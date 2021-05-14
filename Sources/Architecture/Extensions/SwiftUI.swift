@@ -79,3 +79,12 @@ public struct GeometryPreference: PreferenceKey {
     }
   }
 }
+
+#if os(macOS)
+// MARK: VisualEffectView
+public struct VisualEffectView: NSViewRepresentable {
+  public func makeNSView(context: NSViewRepresentableContext<Self>) -> NSVisualEffectView { NSVisualEffectView() }
+  public func updateNSView(_ nsView: NSVisualEffectView, context: NSViewRepresentableContext<Self>) { nsView.blendingMode = .behindWindow }
+  public init() { }
+}
+#endif

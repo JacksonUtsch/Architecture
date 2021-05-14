@@ -57,3 +57,41 @@ extension Set {
     return Set<U>(self.lazy.map(transform))
   }
 }
+
+// MARK: Codable Array
+extension Array: RawRepresentable where Element: Codable {
+  public init?(rawValue: String) {
+    guard let data = rawValue.data(using: .utf8),
+          let result = try? JSONDecoder().decode([Element].self, from: data)
+    else { return nil }
+    self = result
+  }
+  public var rawValue: String {
+    guard let data = try? JSONEncoder().encode(self),
+          let result = String(data: data, encoding: .utf8)
+    else { return "[]" }
+    return result
+  }
+}
+
+#if os(macOS)
+// aid for encoding NSRect
+extension NSRect: RawRepresentable {
+  public init?(rawValue: String) {
+    self = NSRectFromString(rawValue)
+  }
+  public var rawValue: String {
+    NSStringFromRect(self)
+  }
+  public typealias RawValue = String
+}
+#endif
+
+extension Bool {
+  public func toggled() -> Bool {
+    if self == false {
+      return true
+    }
+    return false
+  }
+}
