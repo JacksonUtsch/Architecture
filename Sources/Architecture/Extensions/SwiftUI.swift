@@ -1,6 +1,6 @@
 //
-//  File.swift
-//  
+//  SwiftUI.swift
+//  Architecture
 //
 //  Created by Jackson Utsch on 5/6/21.
 //

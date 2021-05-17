@@ -142,6 +142,27 @@ extension Store {
     }
     return nil
   }
+  
+  public func subscriptStaticStore<LocalState, LocalAction, LocalEnvironment>(
+    state toLocalState: @escaping (State) -> LocalState?,
+    action fromLocalAction: @escaping (LocalAction) -> Action,
+    env toLocalEnvironment: @escaping (Environment) -> LocalEnvironment?
+  ) -> Store<LocalState?, LocalAction, LocalEnvironment?>? {
+    if let localStore = Store<LocalState?, LocalAction, LocalEnvironment?>(
+        initialState: toLocalState(self.state),
+        reducer: { localState, localAction, localEnvironment in
+          self.send(fromLocalAction(localAction))
+          return nil
+        }, environment: toLocalEnvironment(environment)) {
+      
+      self.$state.receive(on: scheduler)
+        .sink { [weak localStore] newState in
+          localStore?.state = toLocalState(newState)
+        }.store(in: &cancellables)
+      return localStore
+    }
+    return nil
+  }
 }
 
 // MARK: Bindings
