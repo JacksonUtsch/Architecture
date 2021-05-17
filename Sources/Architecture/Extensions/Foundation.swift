@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import CoreGraphics
 
 // MARK: Optional Contains
 public extension Optional where Wrapped: Collection, Wrapped.Element: Equatable {
