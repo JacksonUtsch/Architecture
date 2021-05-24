@@ -11,7 +11,10 @@ let package = Package(
   products: [
     .library(
       name: "Architecture",
-      targets: ["Architecture"]),
+      targets: [
+        "Architecture",
+        "ArchitectureTests",
+      ]),
   ],
   dependencies: [
     .package(url: "https://github.com/SwiftyBeaver/SwiftyBeaver.git", .branch("1.9.3")),

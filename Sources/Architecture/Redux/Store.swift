@@ -11,6 +11,17 @@ import Combine
 import SwiftyBeaver
 import CombineSchedulers
 
+//public typealias Reducer<State, Action, Environment> = (inout State, Action, Environment) -> AnyPublisher<Action, Never>?
+
+//extension Reducer where State: Equatable {
+////  func optional() {
+////
+////  }
+//}
+
+extension Store where State: OptionalType, State.Wrapped: Equatable {
+}
+
 // MARK: Store
 @available(iOS 13, macOS 10.15, *)
 public class Store<State: Equatable, Action, Environment>: ObservableObject {
@@ -143,6 +154,28 @@ extension Store {
     return nil
   }
   
+  public func ssubscriptStore<LocalState, LocalAction, LocalEnvironment>(
+    state toLocalState: @escaping (State) -> LocalState?,
+    action fromLocalAction: @escaping (LocalAction) -> Action,
+    env toLocalEnvironment: @escaping (Environment) -> LocalEnvironment
+  ) -> Store<LocalState?, LocalAction, LocalEnvironment> {
+    let localStore = Store<LocalState?, LocalAction, LocalEnvironment>(
+        initialState: toLocalState(self.state),
+        reducer: { localState, localAction, localEnvironment in
+          self.send(fromLocalAction(localAction))
+          return nil
+        }, environment: toLocalEnvironment(environment))
+      
+      self.$state.receive(on: scheduler)
+        .sink { [weak localStore] newState in
+          localStore?.state = toLocalState(newState)
+        }.store(in: &cancellables)
+      return localStore
+//    }
+//    return nil
+  }
+
+  
   public func subscriptStaticStore<LocalState, LocalAction, LocalEnvironment>(
     state toLocalState: @escaping (State) -> LocalState?,
     action fromLocalAction: @escaping (LocalAction) -> Action,
@@ -244,3 +277,114 @@ public struct ConditionalStoreView<State: Equatable, Action, Environment, Conten
     }
   }
 }
+
+public struct CConditionalStoreView<State: Equatable, Action, Environment, Content: View, ElseContent: View>: View {
+  /*@ObservedObject var*/let store: Store<State?, Action, Environment>
+  let content: (Store<State, Action, Environment>) -> Content
+  let elseContent: () -> ElseContent
+  public init(
+    store: Store<State?, Action, Environment>,
+    content: @escaping (Store<State, Action, Environment>) -> Content,
+    elseContent: @escaping () -> ElseContent
+  ) {
+    self.store = store
+    self.content = content
+    self.elseContent = elseContent
+  }
+  
+  public var body: some View {
+    Group {
+      if store.state != nil {
+        content(store as! Store<State, Action, Environment>)
+      } else {
+        elseContent()
+      }
+    }
+  }
+}
+
+//extension CConditionalStoreView: Equatable {
+//  public static func == (lhs: CConditionalStoreView<State, Action, Environment, Content, ElseContent>, rhs: CConditionalStoreView<State, Action, Environment, Content, ElseContent>) -> Bool {
+//    if lhs.store.state != nil && rhs.store.state == nil {
+//      return false
+//    }
+//    if lhs.store.state == nil && rhs.store.state != nil {
+//      return false
+//    }
+//    return true
+//  }
+//}
+
+public protocol OptionalType {
+  associatedtype Wrapped
+  func intoOptional() -> Wrapped?
+}
+
+extension Optional: OptionalType {
+  public func intoOptional() -> Wrapped? {
+    return self
+  }
+}
+
+//extension Store<Optional<V>, E, A> where State: Optional<V> {
+//  func unwrapped() {
+//    if let s = state {
+//
+//    }
+//  }
+//}
+
+//typealias OptionalStore<S: Equatable, A, E> = Store<Optional<S>, A, E>
+
+extension Store where State: OptionalType, State.Wrapped: Equatable {
+  public func unwrapped() -> Store<State.Wrapped, Action, Environment>? {
+    guard let unwrappedState = self.state.intoOptional() else { return nil }
+    return self.substore(
+      state: { _ in unwrappedState },
+      action: { $0 },
+      env: { $0 }
+    )
+  }
+  
+//  func redd() -> AnyPublisher<Action, Never>? {
+//    if state.intoOptional() == nil {
+//      return nil
+//    }
+//    return reducer
+//  }
+}
+
+//extension Store where State: OptionalType, State.Wrapped: Equatable {
+//  func unwrapped(_ ss: State.Wrapped) -> Store<State.Wrapped, Action, Environment>? {
+//    guard let state = state.intoOptional() else { return nil }
+//    let unwrappedStore = Store<State.Wrapped, Action, Environment>(
+//      initialState: state,
+//      reducer:
+//        { a, action, env in
+//        return reducer(ss, action, env)
+////        return nil
+//      },
+//      environment: environment
+//    )
+//    return unwrappedStore
+//  }
+//}
+
+//
+//extension OptionalStore {
+//  func unwrapped() -> Store<State, Action, Environment>? {
+//
+//    if let state = state {
+//
+//    }
+////    if let a = Store<State, Action, Environment>.init(
+////        initialState: state,
+////        reducer: reducer,
+////        environment: environment,
+////        scheduler: scheduler
+////    ) {
+////
+////    }
+//    return nil
+//  }
+//}
