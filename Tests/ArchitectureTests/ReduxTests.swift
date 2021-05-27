@@ -1,3 +1,10 @@
+//
+//  ReduxTests.swift
+//  Architecture
+//
+//  Created by Jackson Utsch on 5/18/21.
+//
+
 import XCTest
 @testable import Architecture
 import SwiftUI

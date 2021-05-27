@@ -92,10 +92,10 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
   }
 }
 
-// MARK: Substores
+// MARK: Scoped
 extension Store {
   /// Scoped store that observes and sends changes to the parent
-  public func substore<LocalState, LocalAction, LocalEnvironment>(
+  public func scoped<LocalState, LocalAction, LocalEnvironment>(
     state toLocalState: @escaping (State) -> LocalState,
     action fromLocalAction: @escaping (LocalAction) -> Action,
     env toLocalEnvironment: @escaping (Environment) -> LocalEnvironment
@@ -113,78 +113,7 @@ extension Store {
         localStore?.state = toLocalState(newState)
       }.store(in: &cancellables)
     return localStore
-  }
-  
-  /**
-   Scoped store that observes and sends changes to the parent
-   
-   Used for destructive components such as nested state
-   */
-  public func subscriptStore<LocalState, LocalAction, LocalEnvironment>(
-    state toLocalState: @escaping (State) -> LocalState?,
-    action fromLocalAction: @escaping (LocalAction) -> Action,
-    env toLocalEnvironment: @escaping (Environment) -> LocalEnvironment
-  ) -> Store<LocalState, LocalAction, LocalEnvironment>? {
-    if let localStore = Store<LocalState, LocalAction, LocalEnvironment>(
-        initialState: toLocalState(self.state),
-        reducer: { localState, localAction, localEnvironment in
-          self.send(fromLocalAction(localAction))
-          return nil
-        }, environment: toLocalEnvironment(environment)) {
-      
-      self.$state.receive(on: scheduler)
-        .sink { [weak localStore] newState in
-          if let newLocalState = toLocalState(newState) {
-            localStore?.state = newLocalState
-          }
-        }.store(in: &cancellables)
-      return localStore
-    }
-    return nil
-  }
-  
-  public func ssubscriptStore<LocalState, LocalAction, LocalEnvironment>(
-    state toLocalState: @escaping (State) -> LocalState?,
-    action fromLocalAction: @escaping (LocalAction) -> Action,
-    env toLocalEnvironment: @escaping (Environment) -> LocalEnvironment
-  ) -> Store<LocalState?, LocalAction, LocalEnvironment> {
-    let localStore = Store<LocalState?, LocalAction, LocalEnvironment>(
-        initialState: toLocalState(self.state),
-        reducer: { localState, localAction, localEnvironment in
-          self.send(fromLocalAction(localAction))
-          return nil
-        }, environment: toLocalEnvironment(environment))
-      
-      self.$state.receive(on: scheduler)
-        .sink { [weak localStore] newState in
-          localStore?.state = toLocalState(newState)
-        }.store(in: &cancellables)
-      return localStore
-//    }
-//    return nil
-  }
-
-  
-  public func subscriptStaticStore<LocalState, LocalAction, LocalEnvironment>(
-    state toLocalState: @escaping (State) -> LocalState?,
-    action fromLocalAction: @escaping (LocalAction) -> Action,
-    env toLocalEnvironment: @escaping (Environment) -> LocalEnvironment?
-  ) -> Store<LocalState?, LocalAction, LocalEnvironment?>? {
-    if let localStore = Store<LocalState?, LocalAction, LocalEnvironment?>(
-        initialState: toLocalState(self.state),
-        reducer: { localState, localAction, localEnvironment in
-          self.send(fromLocalAction(localAction))
-          return nil
-        }, environment: toLocalEnvironment(environment)) {
-      
-      self.$state.receive(on: scheduler)
-        .sink { [weak localStore] newState in
-          localStore?.state = toLocalState(newState)
-        }.store(in: &cancellables)
-      return localStore
-    }
-    return nil
-  }
+  }  
 }
 
 // MARK: Bindings
@@ -237,14 +166,15 @@ extension Store {
   public func storeBinding<LocalState: Equatable>(
     get: @escaping (State) -> LocalState,
     set: @escaping (LocalState) -> Action) -> StoreBinding<LocalState> {
-    return substore(state: get, action: set, env: {_ in})
+    return scoped(state: get, action: set, env: {_ in})
   }
 }
 
+// MARK: IfLetStore
 public struct IfLetStore<State: Equatable, Action, Environment, Content>: View where Content: View {
   private let content: (Store<State?, Action, Environment>) -> Content
   private let store: Store<State?, Action, Environment>
-
+  
   /// Initializes an `IfLetStore` view that computes content depending on if a store of optional
   /// state is `nil` or non-`nil`.
   ///
@@ -254,16 +184,38 @@ public struct IfLetStore<State: Equatable, Action, Environment, Content>: View w
   ///     is visible only when the optional state is non-`nil`.
   ///   - elseContent: A view that is only visible when the optional state is `nil`.
   public init<IfContent, ElseContent>(
-    _ store: Store<State?, Action, Environment>,
+    store: Store<State?, Action, Environment>,
     content ifContent: @escaping (Store<State, Action, Environment>) -> IfContent,
     elseContent: @escaping @autoclosure () -> ElseContent
   ) where Content == _ConditionalContent<IfContent, ElseContent> {
     self.store = store
     self.content = { contentStore in
       if let state = contentStore.state {
-        return ViewBuilder.buildEither(first: ifContent(store.substore(state: { $0 ?? state }, action: { $0 }, env: { $0 })))
+        return ViewBuilder.buildEither(first: ifContent(store.scoped(state: { $0 ?? state }, action: { $0 }, env: { $0 })))
       } else {
         return ViewBuilder.buildEither(second: elseContent())
+      }
+    }
+  }
+  
+  /// Initializes an `IfLetStore` view that computes content depending on if a store of optional
+  /// state is `nil` or non-`nil`.
+  ///
+  /// - Parameters:
+  ///   - store: A store of optional state.
+  ///   - ifContent: A function that is given a store of non-optional state and returns a view that
+  ///     is visible only when the optional state is non-`nil`.
+  /// - note : Default else content is EmptyView()
+  public init<IfContent>(
+    store: Store<State?, Action, Environment>,
+    content ifContent: @escaping (Store<State, Action, Environment>) -> IfContent
+  ) where Content == _ConditionalContent<IfContent, EmptyView> {
+    self.store = store
+    self.content = { contentStore in
+      if let state = contentStore.state {
+        return ViewBuilder.buildEither(first: ifContent(store.scoped(state: { $0 ?? state }, action: { $0 }, env: { $0 })))
+      } else {
+        return ViewBuilder.buildEither(second: EmptyView())
       }
     }
   }
@@ -271,144 +223,4 @@ public struct IfLetStore<State: Equatable, Action, Environment, Content>: View w
   public var body: some View {
     content(self.store)
   }
-}
-
-// MARK: ConditionalStoreView
-public struct ConditionalStoreView<State: Equatable, Action, Environment, Content: View, ElseContent: View>: View {
-  let store: Store<State, Action, Environment>?
-  let content: (Store<State, Action, Environment>) -> Content
-  let elseContent: () -> ElseContent
-  public init(
-    store: Store<State, Action, Environment>?,
-    content: @escaping (Store<State, Action, Environment>) -> Content,
-    elseContent: @escaping () -> ElseContent
-  ) {
-    self.store = store
-    self.content = content
-    self.elseContent = elseContent
-  }
-  
-  public var body: some View {
-    Group {
-      if let store = store {
-        content(store)
-      } else {
-        elseContent()
-      }
-    }
-  }
-}
-
-public struct CConditionalStoreView<State: Equatable, Action, Environment, Content: View, ElseContent: View>: View {
-  /*@ObservedObject var*/let store: Store<State?, Action, Environment>
-  let content: (Store<State, Action, Environment>) -> Content
-  let elseContent: () -> ElseContent
-  public init(
-    store: Store<State?, Action, Environment>,
-    content: @escaping (Store<State, Action, Environment>) -> Content,
-    elseContent: @escaping () -> ElseContent
-  ) {
-    self.store = store
-    self.content = content
-    self.elseContent = elseContent
-  }
-  
-  public var body: some View {
-    Group {
-      if store.state != nil {
-        content(store as! Store<State, Action, Environment>)
-      } else {
-        elseContent()
-      }
-    }
-  }
-}
-
-//extension CConditionalStoreView: Equatable {
-//  public static func == (lhs: CConditionalStoreView<State, Action, Environment, Content, ElseContent>, rhs: CConditionalStoreView<State, Action, Environment, Content, ElseContent>) -> Bool {
-//    if lhs.store.state != nil && rhs.store.state == nil {
-//      return false
-//    }
-//    if lhs.store.state == nil && rhs.store.state != nil {
-//      return false
-//    }
-//    return true
-//  }
-//}
-
-public protocol OptionalType {
-  associatedtype Wrapped
-  func intoOptional() -> Wrapped?
-}
-
-extension Optional: OptionalType {
-  public func intoOptional() -> Wrapped? {
-    return self
-  }
-}
-
-//extension Store<Optional<V>, E, A> where State: Optional<V> {
-//  func unwrapped() {
-//    if let s = state {
-//
-//    }
-//  }
-//}
-
-//typealias OptionalStore<S: Equatable, A, E> = Store<Optional<S>, A, E>
-
-extension Store where State: OptionalType, State.Wrapped: Equatable {
-  public func unwrapped() -> Store<State.Wrapped, Action, Environment>? {
-    guard let unwrappedState = self.state.intoOptional() else { return nil }
-    return self.substore(
-      state: { _ in unwrappedState },
-      action: { $0 },
-      env: { $0 }
-    )
-  }
-  
-//  func redd() -> AnyPublisher<Action, Never>? {
-//    if state.intoOptional() == nil {
-//      return nil
-//    }
-//    return reducer
-//  }
-}
-
-//extension Store where State: OptionalType, State.Wrapped: Equatable {
-//  func unwrapped(_ ss: State.Wrapped) -> Store<State.Wrapped, Action, Environment>? {
-//    guard let state = state.intoOptional() else { return nil }
-//    let unwrappedStore = Store<State.Wrapped, Action, Environment>(
-//      initialState: state,
-//      reducer:
-//        { a, action, env in
-//        return reducer(ss, action, env)
-////        return nil
-//      },
-//      environment: environment
-//    )
-//    return unwrappedStore
-//  }
-//}
-
-//
-//extension OptionalStore {
-//  func unwrapped() -> Store<State, Action, Environment>? {
-//
-//    if let state = state {
-//
-//    }
-////    if let a = Store<State, Action, Environment>.init(
-////        initialState: state,
-////        reducer: reducer,
-////        environment: environment,
-////        scheduler: scheduler
-////    ) {
-////
-////    }
-//    return nil
-//  }
-//}
-
-extension Store where State: OptionalType, State.Wrapped: Equatable {
 }
