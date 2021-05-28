@@ -39,6 +39,10 @@ extension Color {
       opacity: alpha
     )
   }
+  
+  public func hex(_ value: UInt, alpha: Double = 1) -> Color {
+    Self.init(hex: value, alpha: alpha)
+  }
 }
 
 // MARK: GeometryBinding

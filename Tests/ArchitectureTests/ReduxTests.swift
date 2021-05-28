@@ -50,9 +50,11 @@ final class ReduxTests: XCTestCase {
   func testScope() {
     // scoped store send actions to the parent and doesn't resolve immediatly,
     // hence the scheduler must advance before assertion
-    let scopedStore = testStore.substore(state: { $0.substate },
-                                         action: { ArchTestAction.substate($0) },
-                                         env: {_ in})
+    let scopedStore = testStore.scoped(
+      state: { $0.substate },
+      action: { ArchTestAction.substate($0) },
+      env: {_ in}
+    )
     
     scopedStore.send(.insert(Substate.IdentifiableInt(value: 5)))
     ReduxTests.scheduler.advance()
