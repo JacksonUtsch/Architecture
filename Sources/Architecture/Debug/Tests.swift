@@ -7,12 +7,14 @@
 
 import Foundation
 import XCTestDynamicOverlay
+import CombineSchedulers
+import Combine
 
 #if DEBUG
 // MARK: Assert
-public extension Store {
+extension Store {
   @discardableResult
-  func assert(
+  public func assert(
     _ action: Action? = nil,
     that expectation: @escaping (State) -> Bool,
     with delay: DispatchQueue.SchedulerTimeType.Stride? = nil
@@ -30,6 +32,25 @@ public extension Store {
       }
     }
     return self
+  }
+  
+  /// Debug only store for testing reducers with errors
+  public static func erasedErrors(
+    initialState: State,
+    reducer: @escaping (inout State, Action, Environment) -> AnyPublisher<Action, Error>?,
+    environment: Environment,
+    scheduler: AnySchedulerOf<DispatchQueue> = .main
+  ) -> Store<State, Action, Environment> {
+    Store<State, Action, Environment>.init(
+      initialState: initialState,
+      reducer: { s, a, e in
+        return reducer(&s, a, e)?
+          .catch { _ in Empty<Action, Never>() }
+          .eraseToAnyPublisher()
+      },
+      environment: environment,
+      scheduler: scheduler
+    )
   }
 }
 #endif

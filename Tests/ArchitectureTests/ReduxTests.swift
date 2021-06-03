@@ -13,7 +13,12 @@ import CombineSchedulers
 
 final class ReduxTests: XCTestCase {
   static let scheduler = DispatchQueue.test
-  let testStore = Store(initialState: ArchTestState(), reducer: testReducer(state:action:env:), environment: (), scheduler: scheduler.eraseToAnyScheduler())
+  let testStore = Store(
+    initialState: ArchTestState(),
+    reducer: testReducer,
+    environment: (),
+    scheduler: scheduler.eraseToAnyScheduler()
+  )
   
   func testBasic() {
     testStore
@@ -50,22 +55,28 @@ final class ReduxTests: XCTestCase {
   func testScope() {
     // scoped store send actions to the parent and doesn't resolve immediatly,
     // hence the scheduler must advance before assertion
-    let scopedStore = testStore.substore(state: { $0.substate },
-                                         action: { ArchTestAction.substate($0) },
-                                         env: {_ in})
-    
+    let scopedStore = testStore.scoped(
+      state: { $0.substate },
+      action: { ArchTestAction.substate($0) },
+      env: {_ in}
+    )
+
     scopedStore.send(.insert(Substate.IdentifiableInt(value: 5)))
     ReduxTests.scheduler.advance()
     // scoped stores pipe actions to their parent causing a return
     XCTAssertEqual(scopedStore.state.contents.collection.count, 2)
-    
+
     // without being scoped, the changes can be asserted immediatly
-    let standaloneStore = SubstateStore(initialState: Substate(contents: .init([], at: nil)),
-                                        reducer: substateReducer(state:action:env:),
-                                        environment: (), scheduler: ReduxTests.scheduler.eraseToAnyScheduler())
-    
-    standaloneStore.assert(.insert(Substate.IdentifiableInt(value: 5)),
-                           that: {$0.contents.current?.value == 5})
+    let standaloneStore = SubstateStore(
+      initialState: Substate(contents: .init([], at: nil)),
+      reducer: substateReducer(state:action:env:),
+      environment: (), scheduler: ReduxTests.scheduler.eraseToAnyScheduler()
+    )
+
+    standaloneStore.assert(
+      .insert(Substate.IdentifiableInt(value: 5)),
+      that: {$0.contents.current?.value == 5}
+    )
   }
 }
 
@@ -112,7 +123,11 @@ enum ArchTestAction {
 typealias SubstateStore = Store<Substate, SubstateAction, Void>
 
 // MARK: Substate Reducer
-func substateReducer(state: inout Substate, action: SubstateAction, env: Void) -> AnyPublisher<SubstateAction, Never>? {
+func substateReducer(
+  state: inout Substate,
+  action: SubstateAction,
+  env: Void
+) -> AnyPublisher<SubstateAction, Never>? {
   switch action {
   case .insert(let item):
     state.contents.new(item)
