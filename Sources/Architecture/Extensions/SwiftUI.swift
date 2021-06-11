@@ -40,7 +40,7 @@ extension Color {
     )
   }
   
-  public func hex(_ value: UInt, alpha: Double = 1) -> Color {
+  static public func hex(_ value: UInt, alpha: Double = 1) -> Color {
     Self.init(hex: value, alpha: alpha)
   }
 }
