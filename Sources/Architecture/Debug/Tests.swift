@@ -39,14 +39,16 @@ extension Store {
     initialState: State,
     reducer: @escaping (inout State, Action, Environment) -> AnyPublisher<Action, Error>?,
     environment: Environment,
-    scheduler: AnySchedulerOf<DispatchQueue> = .main
+    scheduler: AnySchedulerOf<DispatchQueue> = .main,
+    onErr: ((Error) -> ())? = nil
   ) -> Store<State, Action, Environment> {
     Store<State, Action, Environment>.init(
       initialState: initialState,
       reducer: { s, a, e in
         return reducer(&s, a, e)?
-          .catch { _ in Empty<Action, Never>() }
-          .eraseToAnyPublisher()
+          .catch { (err: Error) -> Empty<Action, Never> in
+            onErr?(err); return .init()
+          }.eraseToAnyPublisher()
       },
       environment: environment,
       scheduler: scheduler

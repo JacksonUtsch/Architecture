@@ -7,11 +7,10 @@
 
 import XCTest
 @testable import Architecture
-import SwiftUI
 import Combine
 import CombineSchedulers
 
-final class ReduxTests: XCTestCase {
+final class StoreTests: XCTestCase {
   static let scheduler = DispatchQueue.test
   let testStore = Store(
     initialState: ArchTestState(),
@@ -20,7 +19,7 @@ final class ReduxTests: XCTestCase {
     scheduler: scheduler.eraseToAnyScheduler()
   )
   
-  func testBasic() {
+  func testStateMutation() {
     testStore
       .assert(.add, that: {$0.number == 1})
       .assert(.add, that: {$0.number == 2})
@@ -32,14 +31,14 @@ final class ReduxTests: XCTestCase {
    the effect does not instantly resolve
    */
   func testEffect() {
-    testStore.send(.chain)
+    testStore.send(.renameThenAdd)
     XCTAssertEqual(testStore.state.name, "custom name")
-    ReduxTests.scheduler.advance()
+    StoreTests.scheduler.advance()
     XCTAssertEqual(testStore.state.number, 1)
   }
   
   /** - note:
-   the closure is called on declaration
+   the observe closure is called on declaration, can get initial state
    */
   func testObserve() {
     var observationCount = 0
@@ -53,26 +52,27 @@ final class ReduxTests: XCTestCase {
   }
   
   func testScope() {
-    // scoped store send actions to the parent and doesn't resolve immediatly,
-    // hence the scheduler must advance before assertion
-    let scopedStore = testStore.scoped(
+    // a scoped store sends actions to the parent and doesn't resolve immediatly,
+    // hence the scheduler must advance before state assertion
+    let scopedStore = testStore.derived(
       state: { $0.substate },
-      action: { ArchTestAction.substate($0) },
-      env: {_ in}
+      action: { ArchTestAction.subaction($0) },
+      env: { _ in }
     )
-
+    
     scopedStore.send(.insert(Substate.IdentifiableInt(value: 5)))
-    ReduxTests.scheduler.advance()
+    StoreTests.scheduler.advance()
     // scoped stores pipe actions to their parent causing a return
     XCTAssertEqual(scopedStore.state.contents.collection.count, 2)
-
+    XCTAssertEqual(testStore.state.substate.contents.collection.count, 2)
+    
     // without being scoped, the changes can be asserted immediatly
     let standaloneStore = SubstateStore(
       initialState: Substate(contents: .init([], at: nil)),
       reducer: substateReducer(state:action:env:),
-      environment: (), scheduler: ReduxTests.scheduler.eraseToAnyScheduler()
+      environment: (), scheduler: StoreTests.scheduler.eraseToAnyScheduler()
     )
-
+    
     standaloneStore.assert(
       .insert(Substate.IdentifiableInt(value: 5)),
       that: {$0.contents.current?.value == 5}
@@ -92,13 +92,13 @@ func testReducer(state: inout ArchTestState, action: ArchTestAction, env: Void) 
   case .subtract:
     state.number -= 1
     return nil
-  case .chain:
+  case .renameThenAdd:
     state.name = "custom name"
     return Just(ArchTestAction.add)
       .eraseToAnyPublisher()
-  case .substate(let secondary):
+  case .subaction(let secondary):
     return substateReducer(state: &state.substate, action: secondary, env: ())?
-      .map(ArchTestAction.substate)
+      .map(ArchTestAction.subaction)
       .eraseToAnyPublisher()
   }
 }
@@ -107,27 +107,31 @@ func testReducer(state: inout ArchTestState, action: ArchTestAction, env: Void) 
 struct ArchTestState: Equatable {
   var number: Int = 0
   var name: String = "intial name"
-  var substate: Substate = .init(contents: OpenArray<Substate.IdentifiableInt>.init([Substate.IdentifiableInt(value: 5)], at: 0))
+  var substate: Substate = .init(
+    contents: .init(
+      [Substate.IdentifiableInt(value: 5)],
+      at: 0
+    )
+  )
 }
 
 // MARK: Action
 enum ArchTestAction {
   case add
   case subtract
-  case chain
-  case substate(SubstateAction)
+  case renameThenAdd
+  case subaction(Subaction)
 }
 
-
 // MARK: SubstateStore
-typealias SubstateStore = Store<Substate, SubstateAction, Void>
+typealias SubstateStore = Store<Substate, Subaction, Void>
 
 // MARK: Substate Reducer
 func substateReducer(
   state: inout Substate,
-  action: SubstateAction,
+  action: Subaction,
   env: Void
-) -> AnyPublisher<SubstateAction, Never>? {
+) -> AnyPublisher<Subaction, Never>? {
   switch action {
   case .insert(let item):
     state.contents.new(item)
@@ -150,6 +154,6 @@ struct Substate: Equatable {
 }
 
 // MARK: Substate Action
-enum SubstateAction {
+enum Subaction {
   case insert(Substate.IdentifiableInt)
 }

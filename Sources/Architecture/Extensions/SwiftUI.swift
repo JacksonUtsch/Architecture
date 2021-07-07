@@ -135,3 +135,10 @@ public struct RoundedBox: Shape {
     return Path(path.cgPath)
   }
 }
+
+extension View {
+  public func debug(_ action: (() -> ())) -> some View {
+    action()
+    return self
+  }
+}

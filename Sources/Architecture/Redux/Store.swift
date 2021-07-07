@@ -19,10 +19,10 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
   private let reducer: (inout State, Action, Environment) -> AnyPublisher<Action, Never>?
   internal let scheduler: AnySchedulerOf<DispatchQueue>
   
-  private var cancellables: [AnyCancellable] = []
-  
   private var actionsDebug: Log.Level? = nil
   private var stateChangeDebug: Log.Level? = nil
+  
+  private var cancellables: [AnyCancellable] = []
   
   public init(
     initialState: State,
@@ -41,9 +41,7 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
     reducer: @escaping (inout State, Action, Environment) -> AnyPublisher<Action, Never>?,
     environment: Environment
   ) {
-    guard let initialState = initialState else {
-      return nil
-    }
+    guard let initialState = initialState else { return nil }
     self.init(initialState: initialState, reducer: reducer, environment: environment)
   }
   
@@ -82,20 +80,38 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
   }
   
   /// Callback for local state on state changes including declaration
-  public func observe<LocalState>(
+  public func observe<LocalState: Equatable>(
     get: @escaping (State) -> LocalState,
     callback: @escaping (LocalState) -> ()
   ) {
-    $state.map { get($0) }
+    $state
+      .map { get($0) }
+      .removeDuplicates(by: { $0 == $1 })
       .sink { callback($0) }
       .store(in: &cancellables)
   }
 }
 
-// MARK: Scoped
+// MARK: Derived
 extension Store {
-  /// Scoped store that observes and sends changes to the parent
-  public func scoped<LocalState, LocalAction, LocalEnvironment>(
+  public func derived<LocalState>(
+    state toLocalState: @escaping (State) -> LocalState
+  ) -> Store<LocalState, Never, Void> {
+    return derived(
+      state: toLocalState,
+      action: { return $0 },
+      env: { _ in }
+    )
+  }
+  
+  public func derived<LocalState: Equatable>(
+    get: @escaping (State) -> LocalState,
+    set: @escaping (LocalState) -> Action) -> Store<LocalState, LocalState, Void> {
+    return derived(state: get, action: set, env: { _ in })
+  }
+  
+  /// Derived store that observes and sends changes to its parent
+  public func derived<LocalState, LocalAction, LocalEnvironment>(
     state toLocalState: @escaping (State) -> LocalState,
     action fromLocalAction: @escaping (LocalAction) -> Action,
     env toLocalEnvironment: @escaping (Environment) -> LocalEnvironment
@@ -107,13 +123,13 @@ extension Store {
         return nil
       }, environment: toLocalEnvironment(environment)
     )
-    
-    self.$state.receive(on: scheduler)
+    // MARK: Scheduler in reducer/env vs store
+    self.$state//.receive(on: scheduler)
       .sink { [weak localStore] newState in
         localStore?.state = toLocalState(newState)
       }.store(in: &cancellables)
     return localStore
-  }  
+  }
 }
 
 // MARK: Bindings
@@ -154,22 +170,6 @@ extension Store {
   }
 }
 
-public typealias StoreBinding<S: Equatable> = Store<S, S, Void>
-
-extension StoreBinding {
-  public convenience init(constant: State) {
-    self.init(initialState: constant, reducer: {_,_,_ in nil}, environment: () as! Environment)
-  }
-}
-
-extension Store {
-  public func storeBinding<LocalState: Equatable>(
-    get: @escaping (State) -> LocalState,
-    set: @escaping (LocalState) -> Action) -> StoreBinding<LocalState> {
-    return scoped(state: get, action: set, env: {_ in})
-  }
-}
-
 // MARK: IfLetStore
 public struct IfLetStore<State: Equatable, Action, Environment, Content>: View where Content: View {
   private let content: (Store<State?, Action, Environment>) -> Content
@@ -191,7 +191,7 @@ public struct IfLetStore<State: Equatable, Action, Environment, Content>: View w
     self.store = store
     self.content = { contentStore in
       if let state = contentStore.state {
-        return ViewBuilder.buildEither(first: ifContent(store.scoped(state: { $0 ?? state }, action: { $0 }, env: { $0 })))
+        return ViewBuilder.buildEither(first: ifContent(store.derived(state: { $0 ?? state }, action: { $0 }, env: { $0 })))
       } else {
         return ViewBuilder.buildEither(second: elseContent())
       }
@@ -213,7 +213,7 @@ public struct IfLetStore<State: Equatable, Action, Environment, Content>: View w
     self.store = store
     self.content = { contentStore in
       if let state = contentStore.state {
-        return ViewBuilder.buildEither(first: ifContent(store.scoped(state: { $0 ?? state }, action: { $0 }, env: { $0 })))
+        return ViewBuilder.buildEither(first: ifContent(store.derived(state: { $0 ?? state }, action: { $0 }, env: { $0 })))
       } else {
         return ViewBuilder.buildEither(second: EmptyView())
       }
