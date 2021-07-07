@@ -170,6 +170,18 @@ extension Store {
   }
 }
 
+public typealias StoreBinding<S: Equatable> = Store<S, S, Void>
+
+extension StoreBinding {
+  public convenience init(constant: State) {
+    self.init(
+      initialState: constant,
+      reducer: { _,_,_ in nil },
+      environment: () as! Environment
+    )
+  }
+}
+
 // MARK: IfLetStore
 public struct IfLetStore<State: Equatable, Action, Environment, Content>: View where Content: View {
   private let content: (Store<State?, Action, Environment>) -> Content
