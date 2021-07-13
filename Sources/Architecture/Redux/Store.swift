@@ -84,9 +84,9 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
     get: @escaping (State) -> LocalState,
     callback: @escaping (LocalState) -> ()
   ) {
-    $state
+		$state.receive(on: scheduler)
       .map { get($0) }
-      .removeDuplicates(by: { $0 == $1 })
+//      .removeDuplicates(by: { $0 == $1 })
       .sink { callback($0) }
       .store(in: &cancellables)
   }
@@ -124,7 +124,8 @@ extension Store {
       }, environment: toLocalEnvironment(environment)
     )
     // MARK: Scheduler in reducer/env vs store
-    self.$state//.receive(on: scheduler)
+    self.$state
+			.receive(on: scheduler) // required?
       .sink { [weak localStore] newState in
         localStore?.state = toLocalState(newState)
       }.store(in: &cancellables)
