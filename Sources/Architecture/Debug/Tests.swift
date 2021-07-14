@@ -6,11 +6,11 @@
 //
 
 import Foundation
-import XCTestDynamicOverlay
 import CombineSchedulers
 import Combine
 
 #if DEBUG
+import XCTestDynamicOverlay
 // MARK: Assert
 extension Store {
   @discardableResult
@@ -27,6 +27,7 @@ extension Store {
     return self
   }
 }
+
 //	public func assertEqual(
 //		_ action: Action? = nil,
 //		that expectation: @escaping (State) -> Bool
@@ -34,7 +35,6 @@ extension Store {
 //		assertEqual(expected: state, actual: state)
 //		return self
 //	}
-#endif
 
 // MARK: AssertEqual
 public func assertEqual<T: Equatable>(
@@ -43,8 +43,8 @@ public func assertEqual<T: Equatable>(
 ) {
 	if expected != actual {
 		let diff =
-			debugDiff(expected, actual)
-			.map { "\($0.indent(by: 4))\n\n(Expected: −, Actual: +)" }
+			readableDiff(expected, actual)
+			.map { "\($0.indent(by: 2))\n\n(Expected: −, Actual: +)" }
 			?? """
 						Expected:
 						\(String(describing: expected).indent(by: 2))
@@ -60,3 +60,6 @@ public func assertEqual<T: Equatable>(
 		)
 	}
 }
+
+#endif
+

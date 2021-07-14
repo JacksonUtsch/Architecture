@@ -3,7 +3,7 @@ import XCTest
 
 // https://github.com/pointfreeco/swift-composable-architecture
 
-func debugDiff<T>(_ before: T, _ after: T, printer: (T) -> String = { debugOutput($0) }) -> String? {
+public func readableDiff<T>(_ before: T, _ after: T, printer: (T) -> String = { debugOutput($0) }) -> String? {
 	diff(printer(before), printer(after))
 }
 
@@ -90,7 +90,7 @@ func diff(_ first: String, _ second: String) -> String? {
 	return string
 }
 
-func debugOutput(_ value: Any, indent: Int = 0) -> String {
+public func debugOutput(_ value: Any, indent: Int = 0) -> String {
 	var visitedItems: Set<ObjectIdentifier> = []
 	
 	func debugOutputHelp(_ value: Any, indent: Int = 0) -> String {

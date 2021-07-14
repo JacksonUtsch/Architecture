@@ -12,7 +12,7 @@ import Combine
 // MARK: Store
 @available(iOS 13, macOS 10.15, *)
 public class Store<State: Equatable, Action, Environment>: ObservableObject {
-  @UniquePublished public private(set) var state: State
+  @UniquePublished public internal(set) var state: State
 	internal let environment: Environment
 	internal let reducer: (inout State, Action, Environment) -> AnyPublisher<Action, Never>
   private var cancellables: [AnyCancellable] = []
@@ -25,6 +25,7 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
     self.state = initialState
     self.reducer = reducer
     self.environment = environment
+		defaultDebug()
   }
   
   private convenience init?(
@@ -36,28 +37,47 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
     self.init(initialState: initialState, reducer: reducer, environment: environment)
   }
 	
+	/// Error-erased store with callbacks for handling
+	public static func erasedErrors(
+		initialState: State,
+		reducer: @escaping (inout State, Action, Environment) -> AnyPublisher<Action, Error>,
+		environment: Environment,
+		onErr: ((Error) -> ())? = nil
+	) -> Store<State, Action, Environment> {
+		Store<State, Action, Environment>.init(
+			initialState: initialState,
+			reducer: { s, a, e in
+				return reducer(&s, a, e)
+					.catch { (err: Error) -> Empty<Action, Never> in
+						onErr?(err); return .init()
+					}.eraseToAnyPublisher()
+			},
+			environment: environment
+		)
+	}
+	
 	#if DEBUG
 	private var onAction: ((Action) -> ())?
 	private var onStateChange: ((State, State) -> ())?
+		
+	public func defaultDebug() {
+		onAction = { print(String(describing: $0)) }
+		onStateChange = {
+			if let diff = readableDiff($0, $1) {
+				print(diff)
+			}
+		}
+	}
 	
 	/// Establish debugging preferences here
-	public func debug(
+	/// - note: Can use readableDiff(...) for utility
+	public func overrwriteDebug(
 		actions: @escaping (Action) -> (),
 		stateChanges: @escaping (State, State) -> ()
 	) {
 		self.onAction = actions
 		self.onStateChange = stateChanges
 	}
-	
-	public func defaultDebug() {
-		onAction = { print(String(describing: $0)) }
-		onStateChange = {
-			if let diff = debugDiff($0, $1) {
-				print(diff)
-			}
-		}
-	}
-	
 	#endif
 	
   public func send(_ action: Action) {
@@ -187,25 +207,4 @@ extension StoreBinding {
       environment: () as! Environment
     )
   }
-}
-
-extension Store {
-	/// Error-erased store with callback for handling
-	public static func erasedErrors(
-		initialState: State,
-		reducer: @escaping (inout State, Action, Environment) -> AnyPublisher<Action, Error>,
-		environment: Environment,
-		onErr: ((Error) -> ())? = nil
-	) -> Store<State, Action, Environment> {
-		Store<State, Action, Environment>.init(
-			initialState: initialState,
-			reducer: { s, a, e in
-				return reducer(&s, a, e)
-					.catch { (err: Error) -> Empty<Action, Never> in
-						onErr?(err); return .init()
-					}.eraseToAnyPublisher()
-			},
-			environment: environment
-		)
-	}
 }

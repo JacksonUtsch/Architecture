@@ -14,3 +14,14 @@ extension AnyPublisher {
 			.eraseToAnyPublisher()
 	}
 }
+
+extension Optional where Wrapped == AnyPublisher<Any, Error> {
+	/// Erases an optional publisher to an empty
+	public var normalize: Wrapped {
+		if let publisher = self {
+			return publisher
+		} else {
+			return .none
+		}
+	}
+}
