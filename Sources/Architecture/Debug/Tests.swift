@@ -37,7 +37,7 @@ extension Store {
   /// Debug only store for testing reducers with errors
   public static func erasedErrors(
     initialState: State,
-    reducer: @escaping (inout State, Action, Environment) -> AnyPublisher<Action, Error>?,
+    reducer: @escaping (inout State, Action, Environment) -> AnyPublisher<Action, Error>,
     environment: Environment,
     scheduler: AnySchedulerOf<DispatchQueue> = .main,
     onErr: ((Error) -> ())? = nil
@@ -45,7 +45,7 @@ extension Store {
     Store<State, Action, Environment>.init(
       initialState: initialState,
       reducer: { s, a, e in
-        return reducer(&s, a, e)?
+        return reducer(&s, a, e)
           .catch { (err: Error) -> Empty<Action, Never> in
             onErr?(err); return .init()
           }.eraseToAnyPublisher()

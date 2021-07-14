@@ -55,23 +55,23 @@ func appReducer(
   state: inout AppState,
   action: AppAction,
   env: Void
-) -> AnyPublisher<AppAction, Never>? {
+) -> AnyPublisher<AppAction, Never> {
   switch action {
   case .window(let id, let secondary):
-    guard let secondaryIndex = state.windows.collection.firstIndex(where: { $0.id == id }) else { return nil }
+    guard let secondaryIndex = state.windows.collection.firstIndex(where: { $0.id == id }) else { return .none }
     return windowReducer(
       state: &state.windows.collection[secondaryIndex],
       action: secondary,
       env: env
-    )?
+    )
     .map { AppAction.window(id, $0) }
     .eraseToAnyPublisher()
   case .close(let id):
     state.windows.close(using: id)
-    return nil
+		return .none
   case .name(let value):
     state.text = value
-    return nil
+    return .none
   }
 }
 
@@ -94,11 +94,11 @@ func windowReducer(
   state: inout WindowState,
   action: WindowAction,
   env: Void
-) -> AnyPublisher<WindowAction, Never>? {
+) -> AnyPublisher<WindowAction, Never> {
   switch action {
   case .inc:
     state.count += 1
-    return nil
+    return .none
   }
 }
 

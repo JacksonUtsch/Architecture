@@ -21,10 +21,10 @@ final class StoreTests: XCTestCase {
   
   func testStateMutation() {
     testStore
-      .assert(.add, that: {$0.number == 1})
-      .assert(.add, that: {$0.number == 2})
-      .assert(.subtract, that: {$0.number == 1})
-      .assert(.subtract, that: {$0.number == 0})
+      .assert(.add, that: { $0.number == 1 })
+      .assert(.add, that: { $0.number == 2 })
+      .assert(.subtract, that: { $0.number == 1 })
+      .assert(.subtract, that: { $0.number == 0 })
   }
   
   /** - note:
@@ -42,13 +42,13 @@ final class StoreTests: XCTestCase {
    */
   func testObserve() {
     var observationCount = 0
-    testStore.observe(get: {$0.number}) { _ in
+    testStore.observe(get: { $0.number }) { _ in
       observationCount += 1
     }
     testStore.send(.add)
     testStore.send(.add)
     testStore.send(.add)
-    XCTAssert(observationCount == 4)
+    XCTAssertEqual(observationCount, 4)
   }
   
   func testScope() {
@@ -84,20 +84,20 @@ final class StoreTests: XCTestCase {
 typealias ArchTestStore = Store<ArchTestState, ArchTestAction, Void>
 
 // MARK: Reducer
-func testReducer(state: inout ArchTestState, action: ArchTestAction, env: Void) -> AnyPublisher<ArchTestAction, Never>? {
+func testReducer(state: inout ArchTestState, action: ArchTestAction, env: Void) -> AnyPublisher<ArchTestAction, Never> {
   switch action {
   case .add:
     state.number += 1
-    return nil
+    return .none
   case .subtract:
     state.number -= 1
-    return nil
+    return .none
   case .renameThenAdd:
     state.name = "custom name"
     return Just(ArchTestAction.add)
       .eraseToAnyPublisher()
   case .subaction(let secondary):
-    return substateReducer(state: &state.substate, action: secondary, env: ())?
+    return substateReducer(state: &state.substate, action: secondary, env: ())
       .map(ArchTestAction.subaction)
       .eraseToAnyPublisher()
   }
@@ -131,11 +131,11 @@ func substateReducer(
   state: inout Substate,
   action: Subaction,
   env: Void
-) -> AnyPublisher<Subaction, Never>? {
+) -> AnyPublisher<Subaction, Never> {
   switch action {
   case .insert(let item):
     state.contents.new(item)
-    return nil
+    return .none
   }
 }
 

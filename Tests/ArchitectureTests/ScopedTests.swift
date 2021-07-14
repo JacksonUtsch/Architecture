@@ -23,12 +23,12 @@ final class ScopedTests: XCTestCase {
       var count = 0
     }
     
-    func reducer(s: inout IntWrapper, a: MainAction, e: Void) -> AnyPublisher<MainAction, Never>? {
+    func reducer(s: inout IntWrapper, a: MainAction, e: Void) -> AnyPublisher<MainAction, Never> {
 //      NSLog("SHOULD INC")
       switch a {
       case .inc:
         s.count += 1
-        return nil
+				return .none
       }
     }
     
@@ -58,10 +58,10 @@ final class ScopedTests: XCTestCase {
   }
   
   func testScopeCalls() {
-    func reducer(s: inout Int, a: Void, e: Void) -> AnyPublisher<Void, Never>? {
+    func reducer(s: inout Int, a: Void, e: Void) -> AnyPublisher<Void, Never> {
 //      NSLog("SHOULD INC")
       s += 1
-      return nil
+      return .none
     }
     
     var scoped1: Int = 0
@@ -87,17 +87,17 @@ final class ScopedTests: XCTestCase {
     
     XCTAssertEqual(mainStore.state, 5)
     XCTAssertEqual(subStore.state, 5)
-    XCTAssertEqual(scoped1, 5)
-    XCTAssertEqual(scoped2, 5)
-    XCTAssertEqual(scoped3, 5)
+    XCTAssertEqual(scoped1, 4)
+    XCTAssertEqual(scoped2, 4)
+    XCTAssertEqual(scoped3, 4)
     
     subStore.send(())
     
-    XCTAssertEqual(mainStore.state, 2)
-    XCTAssertEqual(subStore.state, 2)
-    XCTAssertEqual(scoped1, 2)
-    XCTAssertEqual(scoped2, 2)
-    XCTAssertEqual(scoped3, 2)
+    XCTAssertEqual(mainStore.state, 6)
+    XCTAssertEqual(subStore.state, 6)
+    XCTAssertEqual(scoped1, 5)
+    XCTAssertEqual(scoped2, 5)
+    XCTAssertEqual(scoped3, 5)
     
     subStore.send(())
   }

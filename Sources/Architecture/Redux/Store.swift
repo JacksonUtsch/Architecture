@@ -8,85 +8,71 @@
 import Foundation
 import SwiftUI
 import Combine
-import SwiftyBeaver
-import CombineSchedulers
 
 // MARK: Store
 @available(iOS 13, macOS 10.15, *)
 public class Store<State: Equatable, Action, Environment>: ObservableObject {
   @UniquePublished public private(set) var state: State
-  private let environment: Environment
-  private let reducer: (inout State, Action, Environment) -> AnyPublisher<Action, Never>?
-  internal let scheduler: AnySchedulerOf<DispatchQueue>
-  
-  private var actionsDebug: Log.Level? = nil
-  private var stateChangeDebug: Log.Level? = nil
-  
+	internal let environment: Environment
+	internal let reducer: (inout State, Action, Environment) -> AnyPublisher<Action, Never>
   private var cancellables: [AnyCancellable] = []
   
   public init(
     initialState: State,
-    reducer: @escaping (inout State, Action, Environment) -> AnyPublisher<Action, Never>?,
+    reducer: @escaping (inout State, Action, Environment) -> AnyPublisher<Action, Never>,
     environment: Environment,
-    scheduler: AnySchedulerOf<DispatchQueue> = .main
   ) {
     self.state = initialState
     self.reducer = reducer
     self.environment = environment
-    self.scheduler = scheduler
   }
   
   private convenience init?(
     initialState: State?,
-    reducer: @escaping (inout State, Action, Environment) -> AnyPublisher<Action, Never>?,
+    reducer: @escaping (inout State, Action, Environment) -> AnyPublisher<Action, Never>,
     environment: Environment
   ) {
     guard let initialState = initialState else { return nil }
     self.init(initialState: initialState, reducer: reducer, environment: environment)
   }
-  
+	
+	#if DEBUG
+	private var onAction: ((Action) -> ())?
+	private var onStateChange: ((State, State) -> ())?
+	
+	/// Establishes logging preferences
+	public func debug(
+		actions: @escaping (Action) -> (),
+		stateChanges: @escaping (State, State) -> ()
+	) {
+		self.onAction = actions
+		self.onStateChange = stateChanges
+	}
+	#endif
+	
   public func send(_ action: Action) {
-    if let level = actionsDebug {
-      DispatchQueue.global(qos: .utility).async {
-        Log.custom(level: level, message: action)
-      }
-    }
-    
     let tempState = state
-    if let effect = reducer(&state, action, environment) {
-      effect.receive(on: scheduler)
-        .sink { [unowned self] result in
-          self.send(result)
-        }.store(in: &cancellables)
-    }
-    
-    if let level = stateChangeDebug {
-      DispatchQueue.global(qos: .utility).async { [unowned self] in
-        let diff = dumpDiff(state, tempState).joined()
-        if diff.count > 0 {
-          Log.custom(level: level, message: "\n" + "\(self.self) \n" + diff + "\n")
-        }
-      }
-    }
+		let effect = reducer(&state, action, environment)
+		
+		effect
+			.sink { [unowned self] result in
+				self.send(result)
+			}.store(in: &cancellables)
+		
+		#if DEBUG
+		onAction?(action)
+		onStateChange?(tempState, state)
+		#endif
   }
-  
-  /// Establishes logging preferences
-  public func debug(
-    actions: Log.Level? = nil,
-    stateChanges: Log.Level? = nil
-  ) {
-    self.actionsDebug = actions
-    self.stateChangeDebug = stateChanges
-  }
-  
-  /// Callback for local state on state changes including declaration
+	
+  /// Callback for derived state changes equated on state changes and declaration
   public func observe<LocalState: Equatable>(
     get: @escaping (State) -> LocalState,
     callback: @escaping (LocalState) -> ()
   ) {
-		$state.receive(on: scheduler)
+		$state
       .map { get($0) }
-//      .removeDuplicates(by: { $0 == $1 })
+      .removeDuplicates(by: { $0 == $1 })
       .sink { callback($0) }
       .store(in: &cancellables)
   }
@@ -94,46 +80,49 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
 
 // MARK: Derived
 extension Store {
-  public func derived<LocalState>(
-    state toLocalState: @escaping (State) -> LocalState
-  ) -> Store<LocalState, Never, Void> {
-    return derived(
-      state: toLocalState,
-      action: { return $0 },
-      env: { _ in }
-    )
-  }
-  
-  public func derived<LocalState: Equatable>(
-    get: @escaping (State) -> LocalState,
-    set: @escaping (LocalState) -> Action) -> Store<LocalState, LocalState, Void> {
-    return derived(state: get, action: set, env: { _ in })
-  }
-  
   /// Derived store that observes and sends changes to its parent
   public func derived<LocalState, LocalAction, LocalEnvironment>(
     state toLocalState: @escaping (State) -> LocalState,
     action fromLocalAction: @escaping (LocalAction) -> Action,
     env toLocalEnvironment: @escaping (Environment) -> LocalEnvironment
   ) -> Store<LocalState, LocalAction, LocalEnvironment> {
+		var isSendingUp = false
     let localStore = Store<LocalState, LocalAction, LocalEnvironment>(
       initialState: toLocalState(self.state),
       reducer: { localState, localAction, localEnvironment in
-        self.send(fromLocalAction(localAction))
-        return nil
+				defer { isSendingUp = false }
+				isSendingUp = true
+				self.send(fromLocalAction(localAction))
+				localState = toLocalState(self.state)
+				return .none
       }, environment: toLocalEnvironment(environment)
     )
-    // MARK: Scheduler in reducer/env vs store
     self.$state
-			.receive(on: scheduler) // required?
       .sink { [weak localStore] newState in
+				guard !isSendingUp else { return }
         localStore?.state = toLocalState(newState)
       }.store(in: &cancellables)
     return localStore
   }
+	
+	public func derived<LocalState>(
+		state toLocalState: @escaping (State) -> LocalState
+	) -> Store<LocalState, Never, Void> {
+		return derived(
+			state: toLocalState,
+			action: { return $0 },
+			env: { _ in }
+		)
+	}
+	
+	public func derived<LocalState: Equatable>(
+		get: @escaping (State) -> LocalState,
+		set: @escaping (LocalState) -> Action) -> Store<LocalState, LocalState, Void> {
+		return derived(state: get, action: set, env: { _ in })
+	}
 }
 
-// MARK: Bindings
+// MARK: Binding
 extension Store {
   /// SwiftUI Binding with action
   @available(iOS 14, macOS 11.0, *)
@@ -171,13 +160,14 @@ extension Store {
   }
 }
 
+// MARK: StoreBinding
 public typealias StoreBinding<S: Equatable> = Store<S, S, Void>
 
 extension StoreBinding {
   public convenience init(constant: State) {
     self.init(
       initialState: constant,
-      reducer: { _,_,_ in nil },
+			reducer: { _,_,_ in .none },
       environment: () as! Environment
     )
   }
