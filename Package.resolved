@@ -11,11 +11,20 @@
         }
       },
       {
-        "package": "SwiftyBeaver",
-        "repositoryURL": "https://github.com/SwiftyBeaver/SwiftyBeaver.git",
+        "package": "swift-collections",
+        "repositoryURL": "https://github.com/apple/swift-collections",
         "state": {
-          "branch": "1.9.3",
-          "revision": "2c513a2e8fbfbd6495afc4a05941d8e3fdba68e9",
+          "branch": null,
+          "revision": "3426dba9ee5c9f8e4981b0fc9d39a818d36eec28",
+          "version": "0.0.4"
+        }
+      },
+      {
+        "package": "swift-identified-collections",
+        "repositoryURL": "https://github.com/pointfreeco/swift-identified-collections",
+        "state": {
+          "branch": "0.1.1",
+          "revision": "edececbdb56b07e9402f2f3f5b907d220a28b4ea",
           "version": null
         }
       },

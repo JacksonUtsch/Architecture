@@ -1,13 +1,12 @@
 //
-//  File.swift
-//  
+//  IfLetStore.swift
+//  Architecture
 //
 //  Created by Jackson Utsch on 7/14/21.
 //
 
 import SwiftUI
 
-// MARK: IfLetStore
 public struct IfLetStore<State: Equatable, Action, Environment, Content>: View where Content: View {
 	private let content: (Store<State?, Action, Environment>) -> Content
 	private let store: Store<State?, Action, Environment>

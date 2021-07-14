@@ -26,24 +26,37 @@ extension Store {
 		}
     return self
   }
-  
-  /// Debug only store for testing reducers with errors
-  public static func erasedErrors(
-    initialState: State,
-    reducer: @escaping (inout State, Action, Environment) -> AnyPublisher<Action, Error>,
-    environment: Environment,
-    onErr: ((Error) -> ())? = nil
-  ) -> Store<State, Action, Environment> {
-    Store<State, Action, Environment>.init(
-      initialState: initialState,
-      reducer: { s, a, e in
-        return reducer(&s, a, e)
-          .catch { (err: Error) -> Empty<Action, Never> in
-            onErr?(err); return .init()
-          }.eraseToAnyPublisher()
-      },
-      environment: environment
-    )
-  }
 }
+//	public func assertEqual(
+//		_ action: Action? = nil,
+//		that expectation: @escaping (State) -> Bool
+//	) -> Self {
+//		assertEqual(expected: state, actual: state)
+//		return self
+//	}
 #endif
+
+// MARK: AssertEqual
+public func assertEqual<T: Equatable>(
+	expected: T,
+	actual: T
+) {
+	if expected != actual {
+		let diff =
+			debugDiff(expected, actual)
+			.map { "\($0.indent(by: 4))\n\n(Expected: −, Actual: +)" }
+			?? """
+						Expected:
+						\(String(describing: expected).indent(by: 2))
+						Actual:
+						\(String(describing: actual).indent(by: 2))
+						"""
+		
+		XCTFail(
+			"""
+						State change does not match expectation: …
+						\(diff)
+						"""
+		)
+	}
+}

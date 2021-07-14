@@ -40,7 +40,7 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
 	private var onAction: ((Action) -> ())?
 	private var onStateChange: ((State, State) -> ())?
 	
-	/// Establishes logging preferences
+	/// Establish debugging preferences here
 	public func debug(
 		actions: @escaping (Action) -> (),
 		stateChanges: @escaping (State, State) -> ()
@@ -48,6 +48,16 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
 		self.onAction = actions
 		self.onStateChange = stateChanges
 	}
+	
+	public func defaultDebug() {
+		onAction = { print(String(describing: $0)) }
+		onStateChange = {
+			if let diff = debugDiff($0, $1) {
+				print(diff)
+			}
+		}
+	}
+	
 	#endif
 	
   public func send(_ action: Action) {
@@ -55,8 +65,8 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
 		let effect = reducer(&state, action, environment)
 		
 		effect
-			.sink { [unowned self] result in
-				self.send(result)
+			.sink { [weak self] result in
+				self?.send(result)
 			}.store(in: &cancellables)
 		
 		#if DEBUG
@@ -114,7 +124,7 @@ extension Store {
 	) -> Store<LocalState, Never, Void> {
 		return derived(
 			state: toLocalState,
-			action: { return $0 },
+			action: { $0 },
 			env: { _ in }
 		)
 	}
@@ -177,4 +187,25 @@ extension StoreBinding {
       environment: () as! Environment
     )
   }
+}
+
+extension Store {
+	/// Error-erased store with callback for handling
+	public static func erasedErrors(
+		initialState: State,
+		reducer: @escaping (inout State, Action, Environment) -> AnyPublisher<Action, Error>,
+		environment: Environment,
+		onErr: ((Error) -> ())? = nil
+	) -> Store<State, Action, Environment> {
+		Store<State, Action, Environment>.init(
+			initialState: initialState,
+			reducer: { s, a, e in
+				return reducer(&s, a, e)
+					.catch { (err: Error) -> Empty<Action, Never> in
+						onErr?(err); return .init()
+					}.eraseToAnyPublisher()
+			},
+			environment: environment
+		)
+	}
 }

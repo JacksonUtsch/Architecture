@@ -13,16 +13,21 @@ let package = Package(
       name: "Architecture",
       targets: [
         "Architecture",
-      ]),
+      ]
+		),
   ],
   dependencies: [
-    .package(url: "https://github.com/SwiftyBeaver/SwiftyBeaver.git", .branch("1.9.3")),
     .package(url: "https://github.com/pointfreeco/combine-schedulers", .branch("0.5.0")),
+		.package(url: "https://github.com/pointfreeco/swift-identified-collections", .branch("0.1.1")),
   ],
   targets: [
     .target(
       name: "Architecture",
-      dependencies: ["SwiftyBeaver", .product(name: "CombineSchedulers", package: "combine-schedulers")]),
+      dependencies: [
+				.product(name: "CombineSchedulers", package: "combine-schedulers"),
+				.product(name: "IdentifiedCollections", package: "swift-identified-collections")
+			]
+		),
     .testTarget(
       name: "ArchitectureTests",
       dependencies: ["Architecture"]),

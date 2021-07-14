@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import CoreGraphics
 
 // MARK: Optional Contains
 public extension Optional where Wrapped: Collection, Wrapped.Element: Equatable {
@@ -54,7 +53,7 @@ public extension CGSize {
 
 // MARK: setMap
 extension Set {
-  func setMap<U>(transform: (Element) -> U) -> Set<U> {
+  public func setMap<U>(transform: (Element) -> U) -> Set<U> {
     return Set<U>(self.lazy.map(transform))
   }
 }
