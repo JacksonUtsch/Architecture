@@ -20,7 +20,7 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
   public init(
     initialState: State,
     reducer: @escaping (inout State, Action, Environment) -> AnyPublisher<Action, Never>,
-    environment: Environment,
+    environment: Environment
   ) {
     self.state = initialState
     self.reducer = reducer
@@ -64,18 +64,21 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
 		onStateChange?(tempState, state)
 		#endif
   }
-	
-  /// Callback for derived state changes equated on state changes and declaration
-  public func observe<LocalState: Equatable>(
-    get: @escaping (State) -> LocalState,
-    callback: @escaping (LocalState) -> ()
-  ) {
+}
+
+// MARK: Observe
+extension Store {
+	/// Callback for derived state changes equated on state changes and declaration
+	public func observe<LocalState: Equatable>(
+		_ get: @escaping (State) -> LocalState,
+		and callback: @escaping (LocalState) -> ()
+	) {
 		$state
-      .map { get($0) }
-      .removeDuplicates(by: { $0 == $1 })
-      .sink { callback($0) }
-      .store(in: &cancellables)
-  }
+			.map { get($0) }
+			.removeDuplicates(by: { $0 == $1 })
+			.sink { callback($0) }
+			.store(in: &cancellables)
+	}
 }
 
 // MARK: Derived
@@ -105,6 +108,7 @@ extension Store {
     return localStore
   }
 	
+	/// Derived store that only listsens to state
 	public func derived<LocalState>(
 		state toLocalState: @escaping (State) -> LocalState
 	) -> Store<LocalState, Never, Void> {
@@ -115,6 +119,8 @@ extension Store {
 		)
 	}
 	
+	/// Derived store that gets and sets local state
+	/// - note: Resulting type is know as a StoreBinding
 	public func derived<LocalState: Equatable>(
 		get: @escaping (State) -> LocalState,
 		set: @escaping (LocalState) -> Action) -> Store<LocalState, LocalState, Void> {
@@ -170,60 +176,5 @@ extension StoreBinding {
 			reducer: { _,_,_ in .none },
       environment: () as! Environment
     )
-  }
-}
-
-// MARK: IfLetStore
-public struct IfLetStore<State: Equatable, Action, Environment, Content>: View where Content: View {
-  private let content: (Store<State?, Action, Environment>) -> Content
-  private let store: Store<State?, Action, Environment>
-  
-  /// Initializes an `IfLetStore` view that computes content depending on if a store of optional
-  /// state is `nil` or non-`nil`.
-  ///
-  /// - Parameters:
-  ///   - store: A store of optional state.
-  ///   - ifContent: A function that is given a store of non-optional state and returns a view that
-  ///     is visible only when the optional state is non-`nil`.
-  ///   - elseContent: A view that is only visible when the optional state is `nil`.
-  public init<IfContent, ElseContent>(
-    store: Store<State?, Action, Environment>,
-    content ifContent: @escaping (Store<State, Action, Environment>) -> IfContent,
-    elseContent: @escaping @autoclosure () -> ElseContent
-  ) where Content == _ConditionalContent<IfContent, ElseContent> {
-    self.store = store
-    self.content = { contentStore in
-      if let state = contentStore.state {
-        return ViewBuilder.buildEither(first: ifContent(store.derived(state: { $0 ?? state }, action: { $0 }, env: { $0 })))
-      } else {
-        return ViewBuilder.buildEither(second: elseContent())
-      }
-    }
-  }
-  
-  /// Initializes an `IfLetStore` view that computes content depending on if a store of optional
-  /// state is `nil` or non-`nil`.
-  ///
-  /// - Parameters:
-  ///   - store: A store of optional state.
-  ///   - ifContent: A function that is given a store of non-optional state and returns a view that
-  ///     is visible only when the optional state is non-`nil`.
-  /// - note : Default else content is EmptyView()
-  public init<IfContent>(
-    store: Store<State?, Action, Environment>,
-    content ifContent: @escaping (Store<State, Action, Environment>) -> IfContent
-  ) where Content == _ConditionalContent<IfContent, EmptyView> {
-    self.store = store
-    self.content = { contentStore in
-      if let state = contentStore.state {
-        return ViewBuilder.buildEither(first: ifContent(store.derived(state: { $0 ?? state }, action: { $0 }, env: { $0 })))
-      } else {
-        return ViewBuilder.buildEither(second: EmptyView())
-      }
-    }
-  }
-  
-  public var body: some View {
-    content(self.store)
   }
 }

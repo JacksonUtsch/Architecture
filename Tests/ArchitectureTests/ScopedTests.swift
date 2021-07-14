@@ -39,8 +39,7 @@ final class ScopedTests: XCTestCase {
     let mainStore = Store<IntWrapper, MainAction, Void>.init(
       initialState: IntWrapper(),
       reducer: reducer,
-      environment: (),
-      scheduler: scheduler.eraseToAnyScheduler()
+      environment: ()
     )
     
     let substore = mainStore.derived(
@@ -71,8 +70,7 @@ final class ScopedTests: XCTestCase {
     let mainStore = Store.init(
       initialState: 0,
       reducer: reducer(s:a:e:),
-      environment: (),
-      scheduler: .main
+      environment: ()
     )
     let subStore: Store<Int, Void, Void> = mainStore
       .derived(state: { return $0 }, action: { scoped1 += 1 }, env: { })

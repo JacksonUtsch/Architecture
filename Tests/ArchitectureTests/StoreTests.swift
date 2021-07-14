@@ -15,8 +15,7 @@ final class StoreTests: XCTestCase {
   let testStore = Store(
     initialState: ArchTestState(),
     reducer: testReducer,
-    environment: (),
-    scheduler: scheduler.eraseToAnyScheduler()
+    environment: ()
   )
   
   func testStateMutation() {
@@ -42,7 +41,7 @@ final class StoreTests: XCTestCase {
    */
   func testObserve() {
     var observationCount = 0
-    testStore.observe(get: { $0.number }) { _ in
+    testStore.observe({ $0.number }) { _ in
       observationCount += 1
     }
     testStore.send(.add)
@@ -70,7 +69,7 @@ final class StoreTests: XCTestCase {
     let standaloneStore = SubstateStore(
       initialState: Substate(contents: .init([], at: nil)),
       reducer: substateReducer(state:action:env:),
-      environment: (), scheduler: StoreTests.scheduler.eraseToAnyScheduler()
+      environment: ()
     )
     
     standaloneStore.assert(

@@ -17,8 +17,7 @@ final class OptionalTests: XCTestCase {
     let appStore = AppStore.init(
       initialState: AppState.init(windows: .init([WindowState.init()], at: 0)),
       reducer: appReducer(state:action:env:),
-      environment: (),
-      scheduler: scheduler.eraseToAnyScheduler()
+      environment: ()
     )
     
     let id = appStore.state.windows.collection.first!.id

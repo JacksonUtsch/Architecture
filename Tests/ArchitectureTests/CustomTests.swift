@@ -18,7 +18,7 @@ final class CustomTests: XCTestCase {
       return .none
     }
     
-    let mainStore = Store.init(initialState: 0, reducer: reducer, environment: (), scheduler: sch.eraseToAnyScheduler())
+    let mainStore = Store.init(initialState: 0, reducer: reducer, environment: ())
     let substore = mainStore
       .derived(state: { v -> Int in substate1 += 1; return v }, action: { subaction1 += 1; }, env: { })
       .derived(state: { v -> Int in substate2 += 1; return v }, action: { subaction2 += 1; }, env: { })

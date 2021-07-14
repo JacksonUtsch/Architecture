@@ -16,21 +16,14 @@ extension Store {
   @discardableResult
   public func assert(
     _ action: Action? = nil,
-    that expectation: @escaping (State) -> Bool,
-    with delay: DispatchQueue.SchedulerTimeType.Stride? = nil
+    that expectation: @escaping (State) -> Bool
   ) -> Self {
     if let action = action {
       send(action)
     }
-    guard let delay = delay else {
-      if expectation(self.state) == false { XCTFail() }
-      return self
-    }
-    scheduler.schedule(after: scheduler.now.advanced(by: delay)) {
-      if expectation(self.state) == false {
-        XCTFail()
-      }
-    }
+		if expectation(self.state) == false {
+			XCTFail()
+		}
     return self
   }
   
@@ -39,7 +32,6 @@ extension Store {
     initialState: State,
     reducer: @escaping (inout State, Action, Environment) -> AnyPublisher<Action, Error>,
     environment: Environment,
-    scheduler: AnySchedulerOf<DispatchQueue> = .main,
     onErr: ((Error) -> ())? = nil
   ) -> Store<State, Action, Environment> {
     Store<State, Action, Environment>.init(
@@ -50,8 +42,7 @@ extension Store {
             onErr?(err); return .init()
           }.eraseToAnyPublisher()
       },
-      environment: environment,
-      scheduler: scheduler
+      environment: environment
     )
   }
 }
