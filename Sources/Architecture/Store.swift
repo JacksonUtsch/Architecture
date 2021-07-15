@@ -13,7 +13,7 @@ import Combine
 @available(iOS 13, macOS 10.15, *)
 public class Store<State: Equatable, Action, Environment>: ObservableObject {
   @UniquePublished public internal(set) var state: State
-	internal let environment: Environment
+	public let environment: Environment
 	internal let reducer: (inout State, Action, Environment) -> AnyPublisher<Action, Never>
   private var cancellables: [AnyCancellable] = []
   
@@ -59,7 +59,7 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
 	#if DEBUG
 	private var onAction: ((Action) -> ())?
 	private var onStateChange: ((State, State) -> ())?
-		
+	
 	public func defaultDebug() {
 		onAction = { print(String(describing: $0)) }
 		onStateChange = {
@@ -101,7 +101,7 @@ extension Store {
 	/// Callback for derived state changes equated on state changes and declaration
 	public func observe<LocalState: Equatable>(
 		_ get: @escaping (State) -> LocalState,
-		and callback: @escaping (LocalState) -> ()
+		onChange callback: @escaping (LocalState) -> ()
 	) {
 		$state
 			.map { get($0) }

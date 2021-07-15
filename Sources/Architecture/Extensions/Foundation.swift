@@ -40,6 +40,8 @@ public extension Array where Element: Identifiable {
   }
 }
 
+import CoreGraphics
+
 // MARK: CGSize
 public extension CGSize {
   var short: CGFloat {

@@ -25,3 +25,16 @@ extension Optional where Wrapped == AnyPublisher<Any, Error> {
 		}
 	}
 }
+
+extension Optional where Wrapped: Combine.Publisher {
+	/// Erases an optional publisher to an empty
+	public var normalize: AnyPublisher<Wrapped.Output, Wrapped.Failure> {
+		if let publisher = self {
+			return publisher
+				.eraseToAnyPublisher()
+		} else {
+			return Empty<Wrapped.Output, Wrapped.Failure>()
+				.eraseToAnyPublisher()
+		}
+	}
+}
