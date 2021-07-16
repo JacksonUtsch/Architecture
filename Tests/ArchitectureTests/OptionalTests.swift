@@ -31,7 +31,7 @@ final class OptionalTests: XCTestCase {
 			
 			windowStore.send(.inc)
 			scheduler.advance()
-			windowStore.assert(that: { $0?.count == 1 })
+			XCTAssertEqual(windowStore.state?.count, 1)
 			
 			close()
 			scheduler.advance()
@@ -39,10 +39,12 @@ final class OptionalTests: XCTestCase {
 		}
 		
 		scope() {
-			appStore.assert(.close(id), that: { $0.windows == .init([], at: nil) })
+			appStore.send(.close(id))
+			XCTAssertEqual(appStore.state.windows, .init([], at: nil))
 		}
 		
-		appStore.assert(.name("some"), that: { $0.text == "some" })
+		appStore.send(.name("some"))
+		XCTAssertEqual(appStore.state.text, "some")
 	}
 }
 

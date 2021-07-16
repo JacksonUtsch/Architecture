@@ -12,7 +12,7 @@ import CombineSchedulers
 
 final class StoreTests: XCTestCase {
 	static let scheduler = DispatchQueue.test
-	let testStore = Store(
+	let testStore = TestStore(
 		initialState: ArchTestState(),
 		reducer: testReducer,
 		environment: ()
@@ -20,10 +20,10 @@ final class StoreTests: XCTestCase {
 	
 	func testStateMutation() {
 		testStore
-			.assert(.add, that: { $0.number == 1 })
-			.assert(.add, that: { $0.number == 2 })
-			.assert(.subtract, that: { $0.number == 1 })
-			.assert(.subtract, that: { $0.number == 0 })
+			.assert(.add, stateChanges: { $0.number = 1 })
+			.assert(.add, stateChanges: { $0.number = 2 })
+			.assert(.subtract, stateChanges: { $0.number = 1 })
+			.assert(.subtract, stateChanges: { $0.number = 0 })
 	}
 	
 	/** - note:
@@ -72,10 +72,10 @@ final class StoreTests: XCTestCase {
 			environment: ()
 		)
 		
-		standaloneStore.assert(
-			.insert(Substate.IdentifiableInt(value: 5)),
-			that: {$0.contents.current?.value == 5}
-		)
+//		standaloneStore.assert(
+//			.insert(Substate.IdentifiableInt(value: 5)),
+//			stateChanges: { $0.contents.collection[$0.contents.index!].value = 5 }
+//		)
 	}
 }
 
@@ -123,7 +123,7 @@ enum ArchTestAction {
 }
 
 // MARK: SubstateStore
-typealias SubstateStore = Store<Substate, Subaction, Void>
+typealias SubstateStore = TestStore<Substate, Subaction, Void>
 
 // MARK: Substate Reducer
 func substateReducer(
@@ -144,7 +144,7 @@ struct Substate: Equatable {
 	
 	struct IdentifiableInt: Equatable, Identifiable {
 		let id = UUID()
-		let value: Int
+		var value: Int
 		
 		static func == (lhs: IdentifiableInt, rhs: IdentifiableInt) -> Bool {
 			return lhs.value == rhs.value

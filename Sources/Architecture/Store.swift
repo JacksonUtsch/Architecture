@@ -15,9 +15,8 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
 	@UniquePublished public internal(set) var state: State
 	internal let environment: Environment
 	internal let reducer: (inout State, Action, Environment) -> AnyPublisher<Action, Never>
-	private var cancellables: [AnyCancellable] = []
-	private var observeCancellables: Set<AnyCancellable> = []
 	private var effectCancellables: [UUID: AnyCancellable] = [:]
+	private var cancellables: Set<AnyCancellable> = []
 	
 	public init(
 		initialState: State,
@@ -65,6 +64,7 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
 	public func defaultDebug() {
 		onAction = { print(String(describing: $0)) }
 		onStateChange = {
+			// background thread async
 			if let diff = readableDiff($0, $1) {
 				print(diff)
 			}
@@ -82,20 +82,56 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
 	}
 	#endif
 	
-	public func send(_ action: Action) {
-		let tempState = state
-		let effect = reducer(&state, action, environment)
+	private var bufferedActions: [Action] = []
+	private var isSending = false
+
+	func send(_ action: Action) {
+		self.bufferedActions.append(action)
+		guard !self.isSending else { return }
+
+		self.isSending = true
+		var currentState = self.state
+		defer {
+			self.state = currentState
+			self.isSending = false
+		}
 		
-		effect
-			.sink { [weak self] result in
-				self?.send(result)
-			}.store(in: &cancellables)
-		
-		#if DEBUG
-		onAction?(action)
-		onStateChange?(tempState, state)
-		#endif
+		while !self.bufferedActions.isEmpty {
+			let action = self.bufferedActions.removeFirst()
+			let effect = self.reducer(&currentState, action, environment)
+
+			var didComplete = false
+			let uuid = UUID()
+			let effectCancellable = effect.sink(
+				receiveCompletion: { [weak self] _ in
+					didComplete = true
+					self?.effectCancellables[uuid] = nil
+				},
+				receiveValue: { [weak self] action in
+					self?.send(action)
+				}
+			)
+
+			if !didComplete {
+				self.effectCancellables[uuid] = effectCancellable
+			}
+		}
 	}
+	
+//	public func send(_ action: Action) {
+//		let tempState = state
+//		let effect = reducer(&state, action, environment)
+//
+//		effect
+//			.sink { [weak self] result in
+//				self?.send(result)
+//			}.store(in: &cancellables)
+//
+//		#if DEBUG
+//		onAction?(action)
+//		onStateChange?(tempState, state)
+//		#endif
+//	}
 }
 
 // MARK: Observe

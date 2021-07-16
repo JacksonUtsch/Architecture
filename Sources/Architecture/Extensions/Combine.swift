@@ -8,6 +8,7 @@
 import Foundation
 import Combine
 
+// MARK: None
 extension AnyPublisher {
 	/// Nil equivalent for a publisher
 	public static var none: Self {
@@ -16,6 +17,7 @@ extension AnyPublisher {
 	}
 }
 
+// MARK: Normalize
 extension Optional where Wrapped == AnyPublisher<Any, Error> {
 	/// Erases an optional publisher to an empty
 	public var normalize: Wrapped {
@@ -40,6 +42,28 @@ extension Optional where Wrapped: Combine.Publisher {
 	}
 }
 
+extension AnyPublisher {
+	public static func just<T>(value: T) -> AnyPublisher<T, Never> {
+		Just(value).eraseToAnyPublisher()
+	}
+}
+
+// MARK: Deferred
+extension AnyPublisher {
+	public func defered<S: Scheduler>(
+		for duration: S.SchedulerTimeType.Stride,
+		on scheduler: S,
+		options: S.SchedulerOptions? = nil
+	) -> Self {
+		Just(())
+			.setFailureType(to: Failure.self)
+			.delay(for: duration, tolerance: nil, scheduler: scheduler, options: options)
+			.flatMap { self }
+			.eraseToAnyPublisher()
+	}
+}
+
+// MARK: Cancellable
 extension AnyPublisher {
 	public func cancellable(id: AnyHashable, overrides: Bool = false) -> AnyPublisher {
 		cancellablesLock.lock()
@@ -68,7 +92,7 @@ extension AnyPublisher {
 		).eraseToAnyPublisher()
 	}
 	
-	public static func cancel(id: AnyHashable) -> AnyPublisher<Void, Never> {
+	public static func cancel(id: AnyHashable) -> AnyPublisher {
 		cancellablesLock.sync {
 			cancellationCancellables[id]?.forEach { $0.cancel() }
 		}
