@@ -12,30 +12,32 @@ import Combine
 // MARK: Store
 @available(iOS 13, macOS 10.15, *)
 public class Store<State: Equatable, Action, Environment>: ObservableObject {
-  @UniquePublished public internal(set) var state: State
+	@UniquePublished public internal(set) var state: State
 	internal let environment: Environment
 	internal let reducer: (inout State, Action, Environment) -> AnyPublisher<Action, Never>
-  private var cancellables: [AnyCancellable] = []
-  
-  public init(
-    initialState: State,
-    reducer: @escaping (inout State, Action, Environment) -> AnyPublisher<Action, Never>,
-    environment: Environment
-  ) {
-    self.state = initialState
-    self.reducer = reducer
-    self.environment = environment
+	private var cancellables: [AnyCancellable] = []
+	private var observeCancellables: Set<AnyCancellable> = []
+	private var effectCancellables: [UUID: AnyCancellable] = [:]
+	
+	public init(
+		initialState: State,
+		reducer: @escaping (inout State, Action, Environment) -> AnyPublisher<Action, Never>,
+		environment: Environment
+	) {
+		self.state = initialState
+		self.reducer = reducer
+		self.environment = environment
 		defaultDebug()
-  }
-  
-  private convenience init?(
-    initialState: State?,
-    reducer: @escaping (inout State, Action, Environment) -> AnyPublisher<Action, Never>,
-    environment: Environment
-  ) {
-    guard let initialState = initialState else { return nil }
-    self.init(initialState: initialState, reducer: reducer, environment: environment)
-  }
+	}
+	
+	private convenience init?(
+		initialState: State?,
+		reducer: @escaping (inout State, Action, Environment) -> AnyPublisher<Action, Never>,
+		environment: Environment
+	) {
+		guard let initialState = initialState else { return nil }
+		self.init(initialState: initialState, reducer: reducer, environment: environment)
+	}
 	
 	/// Error-erased store with callbacks for handling
 	public static func erasedErrors(
@@ -80,8 +82,8 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
 	}
 	#endif
 	
-  public func send(_ action: Action) {
-    let tempState = state
+	public func send(_ action: Action) {
+		let tempState = state
 		let effect = reducer(&state, action, environment)
 		
 		effect
@@ -93,7 +95,7 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
 		onAction?(action)
 		onStateChange?(tempState, state)
 		#endif
-  }
+	}
 }
 
 // MARK: Observe
@@ -113,30 +115,30 @@ extension Store {
 
 // MARK: Derived
 extension Store {
-  /// Derived store that observes and sends changes to its parent
-  public func derived<LocalState, LocalAction, LocalEnvironment>(
-    state toLocalState: @escaping (State) -> LocalState,
-    action fromLocalAction: @escaping (LocalAction) -> Action,
-    env toLocalEnvironment: @escaping (Environment) -> LocalEnvironment
-  ) -> Store<LocalState, LocalAction, LocalEnvironment> {
+	/// Derived store that observes and sends changes to its parent
+	public func derived<LocalState, LocalAction, LocalEnvironment>(
+		state toLocalState: @escaping (State) -> LocalState,
+		action fromLocalAction: @escaping (LocalAction) -> Action,
+		env toLocalEnvironment: @escaping (Environment) -> LocalEnvironment
+	) -> Store<LocalState, LocalAction, LocalEnvironment> {
 		var isSendingUp = false
-    let localStore = Store<LocalState, LocalAction, LocalEnvironment>(
-      initialState: toLocalState(self.state),
-      reducer: { localState, localAction, localEnvironment in
+		let localStore = Store<LocalState, LocalAction, LocalEnvironment>(
+			initialState: toLocalState(self.state),
+			reducer: { localState, localAction, localEnvironment in
 				defer { isSendingUp = false }
 				isSendingUp = true
 				self.send(fromLocalAction(localAction))
 				localState = toLocalState(self.state)
 				return .none
-      }, environment: toLocalEnvironment(environment)
-    )
-    self.$state
-      .sink { [weak localStore] newState in
+			}, environment: toLocalEnvironment(environment)
+		)
+		self.$state
+			.sink { [weak localStore] newState in
 				guard !isSendingUp else { return }
-        localStore?.state = toLocalState(newState)
-      }.store(in: &cancellables)
-    return localStore
-  }
+				localStore?.state = toLocalState(newState)
+			}.store(in: &cancellables)
+		return localStore
+	}
 	
 	/// Derived store that only listsens to state
 	public func derived<LocalState>(
@@ -160,51 +162,51 @@ extension Store {
 
 // MARK: Binding
 extension Store {
-  /// SwiftUI Binding with action
-  @available(iOS 14, macOS 11.0, *)
-  public func binding<LocalState>(
-    get: @escaping (State) -> LocalState,
-    send localState: @escaping (LocalState) -> Action
-  ) -> Binding<LocalState> {
-    let binding = Binding(
-      get: { get(self.state) },
-      set: { newLocalState, transaction in
-        if transaction.animation != nil {
-          withTransaction(transaction) {
-            self.send(localState(newLocalState))
-          }
-        } else {
-          self.send(localState(newLocalState))
-        }
-      }
-    )
-    return binding
-  }
-  
-  /// SwiftUI Binding with callback
-  @available(iOS 14, macOS 11.0, *)
-  public func binding<LocalState>(
-    get: @escaping (State) -> LocalState,
-    callback: @escaping (LocalState) -> ()
-  ) -> Binding<LocalState> {
-    Binding(
-      get: { get(self.state) },
-      set: { newLocalState in
-        callback(newLocalState)
-      }
-    )
-  }
+	/// SwiftUI Binding with action
+	@available(iOS 14, macOS 11.0, *)
+	public func binding<LocalState>(
+		get: @escaping (State) -> LocalState,
+		send localState: @escaping (LocalState) -> Action
+	) -> Binding<LocalState> {
+		let binding = Binding(
+			get: { get(self.state) },
+			set: { newLocalState, transaction in
+				if transaction.animation != nil {
+					withTransaction(transaction) {
+						self.send(localState(newLocalState))
+					}
+				} else {
+					self.send(localState(newLocalState))
+				}
+			}
+		)
+		return binding
+	}
+	
+	/// SwiftUI Binding with callback
+	@available(iOS 14, macOS 11.0, *)
+	public func binding<LocalState>(
+		get: @escaping (State) -> LocalState,
+		callback: @escaping (LocalState) -> ()
+	) -> Binding<LocalState> {
+		Binding(
+			get: { get(self.state) },
+			set: { newLocalState in
+				callback(newLocalState)
+			}
+		)
+	}
 }
 
 // MARK: StoreBinding
 public typealias StoreBinding<S: Equatable> = Store<S, S, Void>
 
 extension StoreBinding {
-  public convenience init(constant: State) {
-    self.init(
-      initialState: constant,
+	public convenience init(constant: State) {
+		self.init(
+			initialState: constant,
 			reducer: { _,_,_ in .none },
-      environment: () as! Environment
-    )
-  }
+			environment: () as! Environment
+		)
+	}
 }

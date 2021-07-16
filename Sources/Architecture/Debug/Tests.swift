@@ -13,19 +13,19 @@ import Combine
 import XCTestDynamicOverlay
 // MARK: Assert
 extension Store {
-  @discardableResult
-  public func assert(
-    _ action: Action? = nil,
-    that expectation: @escaping (State) -> Bool
-  ) -> Self {
-    if let action = action {
-      send(action)
-    }
+	@discardableResult
+	public func assert(
+		_ action: Action? = nil,
+		that expectation: @escaping (State) -> Bool
+	) -> Self {
+		if let action = action {
+			send(action)
+		}
 		if expectation(self.state) == false {
 			XCTFail()
 		}
-    return self
-  }
+		return self
+	}
 }
 
 //	public func assertEqual(

@@ -7,11 +7,12 @@
 
 #if DEBUG
 import Foundation
+import Combine
 import XCTestDynamicOverlay
 
-class TestStore<State: Equatable, Action, Environment>: Store<State, Action, Environment> {
-	var effects: [Action] = []
-		
+public final class TestStore<State: Equatable, Action, Environment>: Store<State, Action, Environment> {
+	//	var effects: [Action: AnyCancellable] = [:]
+	
 	deinit {
 		// assert effects have been accounted for, need to decide how to manage long living effects..
 	}
