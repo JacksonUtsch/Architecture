@@ -1,14 +1,14 @@
 //
-//  ReduxTests.swift
-//  Architecture
+//  StoreTests.swift
+//  ArchitectureTests
 //
 //  Created by Jackson Utsch on 5/18/21.
 //
 
 import XCTest
-@testable import Architecture
 import Combine
 import CombineSchedulers
+@testable import Architecture
 
 final class StoreTests: XCTestCase {
 	let scheduler = DispatchQueue.test

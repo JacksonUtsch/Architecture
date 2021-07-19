@@ -1,14 +1,13 @@
 //
 //  CancellationTest.swift
-//  Architecture
+//  ArchitectureTests
 //
 //  Created by Jackson Utsch on 7/15/21.
 //
 
-import Combine
 import XCTest
+import Combine
 import CombineSchedulers
-
 @testable import Architecture
 
 final class CancellationTest: XCTestCase {

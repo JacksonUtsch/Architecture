@@ -1,7 +1,13 @@
+//
+//  Diff.swift
+//  Architecture
+//
+//  Created by PointFree https://github.com/pointfreeco/swift-composable-architecture
+//  Modified by Jackson Utsch on 7/14/21.
+//
+
 #if DEBUG
 import XCTest
-
-// https://github.com/pointfreeco/swift-composable-architecture
 
 public func readableDiff<T>(_ before: T, _ after: T, printer: (T) -> String = { debugOutput($0) }) -> String? {
 	diff(printer(before), printer(after))

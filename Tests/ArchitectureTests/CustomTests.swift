@@ -1,7 +1,13 @@
+//
+//  CustomTests.swift
+//  ArchitectureTests
+//
+//  Created by Jackson Utsch on 7/15/21.
+//
+
 import Combine
 import XCTest
 import CombineSchedulers
-
 @testable import Architecture
 
 final class CustomTests: XCTestCase {

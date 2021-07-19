@@ -1,14 +1,14 @@
 //
 //  ScopedTests.swift
-//  
+//  ArchitectureTests
 //
 //  Created by Jackson Utsch on 6/28/21.
 //
 
 import XCTest
-@testable import Architecture
 import Combine
 import CombineSchedulers
+@testable import Architecture
 
 /* - notes:
 Make .scoped have default values? not requiring state, action or env?

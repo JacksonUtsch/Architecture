@@ -127,9 +127,7 @@ public final class TestStore<State: Equatable, Action: Equatable, Environment>: 
 				line: line
 			)
 		}
-		
-		// bufferedAction logic?
-		
+				
 		var expectation = state
 		expectedMutation(&expectation)
 		var didComplete = false

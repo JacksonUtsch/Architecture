@@ -1,6 +1,6 @@
 //
 //  OpenCollectionTests.swift
-//  Architecture
+//  ArchitectureTests
 //
 //  Created by Jackson Utsch on 5/6/21.
 //
