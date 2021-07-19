@@ -134,8 +134,8 @@ public final class TestStore<State: Equatable, Action: Equatable, Environment>: 
 		expectedMutation(&expectation)
 		var didComplete = false
 		let id = TrackableEffect.init(initialAction: action, file: file, line: line)
-		snapshotState = state
 		let effect = reducer(&state, action, environment)
+		snapshotState = state
 		
 		func recieveAction(_ action: Action) {
 			let actionEffect = reducer(&state, action, environment)
@@ -209,6 +209,9 @@ public final class TestStore<State: Equatable, Action: Equatable, Environment>: 
 			)
 			return
 		}
+		expectedMutation(&snapshotState)
+		assertEqual(expected: snapshotState, actual: state)
+		
 		recievedEffects.removeFirst()
 	}
 	
