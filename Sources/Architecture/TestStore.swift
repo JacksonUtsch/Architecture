@@ -11,24 +11,43 @@ import SwiftUI
 import Combine
 import XCTestDynamicOverlay
 
-public final class TestStore<State: Equatable, Action, Environment>: ObservableObject {
+/*
+send action: { state mutates }
+effect gives subaction 1 { state mutates }
+effect gives subaction 2 { state mutates } .. effect completes
+*/
+
+/// TestStores should be constructed in the scope of a singular test so they can deinit
+public final class TestStore<State: Equatable, Action: Equatable, Environment>: ObservableObject {
 	@UniquePublished public internal(set) var state: State
 	internal let environment: Environment
 	internal let reducer: (inout State, Action, Environment) -> AnyPublisher<Action, Never>
 	private var cancellables: Set<AnyCancellable> = []
 	
-	/// the amount of accepted effects to exist on deinit
+	/// The amount of accepted effects to exist on deinit
+	/// - note: Use to skip exhaustively testing effects, not ideal usage
 	public var effectTolerance: Int = 0
-	var effects: [TrackableEffect: AnyCancellable] = [:]
+	internal var inFlightEffects: [TrackableEffect: AnyCancellable] = [:]
+	internal var recievedEffects: [(action: Action, state: State)] = []
+	internal var snapshotState: State
 	
+	private let file: StaticString
+	private var line: UInt
+	
+	// MARK: Initializers
 	public init(
 		initialState: State,
 		reducer: @escaping (inout State, Action, Environment) -> AnyPublisher<Action, Never>,
-		environment: Environment
+		environment: Environment,
+		file: StaticString = #file,
+		line: UInt = #line
 	) {
 		self.state = initialState
 		self.reducer = reducer
 		self.environment = environment
+		self.file = file
+		self.line = line
+		self.snapshotState = initialState
 	}
 	
 	private convenience init?(
@@ -58,26 +77,143 @@ public final class TestStore<State: Equatable, Action, Environment>: ObservableO
 			environment: environment
 		)
 	}
-
+	
 	deinit {
-		if effects.count > effectTolerance {
+		// accounts for recieved actions
+		if recievedEffects.count > effectTolerance {
 			XCTFail(
 				"""
-				\(effectTolerance - effects.count) effects must be accounted for \
-				to pass the effect tolerance of \(effectTolerance)
+				The store received \(self.recievedEffects.count) unexpected \
+				action\(self.recievedEffects.count == 1 ? "" : "s") after this one: …
 				
-				Unhandled actions: \(debugOutput(effects))
+				Unhandled actions: \(debugOutput(self.recievedEffects.map { $0.0 }))
 				"""
+			)
+		}
+		
+		// accounts for in-flight actions
+		if inFlightEffects.count > effectTolerance {
+			XCTFail(
+				"""
+				An effect returned for this action is still running. It must complete before the end of \
+				the test. …
+				
+				\(inFlightEffects.count - effectTolerance) effect\(inFlightEffects.count - effectTolerance == 1 ? "" : "s") must be accounted for \
+				to pass the effect tolerance of \(effectTolerance)
+				""",
+				file: file,
+				line: line
 			)
 		}
 	}
 	
-//	enum Order {
-//		case send(Action)
-//		case recieve(Action)
-//	}
+	// MARK: Assert
+	@discardableResult
+	public func assert(
+		_ action: Action,
+		file: StaticString = #file,
+		line: UInt = #line,
+		mutates expectedMutation: ((_ original: inout State) -> ()) = { _ in }
+	) -> Self {
+		if recievedEffects.count > effectTolerance {
+			XCTFail(
+				"""
+				\(recievedEffects.count - effectTolerance) effect\(inFlightEffects.count - effectTolerance == 1 ? "" : "s") must be accounted for \
+				to pass the effect tolerance of \(effectTolerance)
+				
+				Unhandled actions: \(debugOutput(recievedEffects))
+				""",
+				file: file,
+				line: line
+			)
+		}
 		
+		// bufferedAction logic?
+		
+		var expectation = state
+		expectedMutation(&expectation)
+		var didComplete = false
+		let id = TrackableEffect.init(initialAction: action, file: file, line: line)
+		snapshotState = state
+		let effect = reducer(&state, action, environment)
+		
+		func recieveAction(_ action: Action) {
+			let actionEffect = reducer(&state, action, environment)
+			recievedEffects.append((action, state))
+			actionEffect.sink { action in
+				recieveAction(action)
+			}.store(in: &cancellables)
+		}
+		
+		let effectCancellable = effect.sink(
+			receiveCompletion: { [weak self] _ in
+				didComplete = true
+				self?.inFlightEffects[id] = nil
+			},
+			receiveValue: { action in
+				recieveAction(action)
+			}
+		)
+		
+		if !didComplete {
+			self.inFlightEffects[id] = effectCancellable
+		}
+		
+		assertEqual(expected: expectation, actual: state)
+		
+		if "\(self.file)" == "\(file)" {
+			self.line = line
+		}
+		
+		return self
+	}
+	
+	// MARK: assertReceived
+	public func assertReceived(
+		_ action: Action,
+		file: StaticString = #file,
+		line: UInt = #line,
+		mutated expectedMutation: ((_ original: inout State) -> ()) = { _ in }
+	) {
+		guard let effect = recievedEffects.first else {
+			XCTFail(
+				"""
+				Expected to receive an action, but received none.
+				""",
+				file: file,
+				line: line
+			)
+			return
+		}
+		
+		if effect.action != action {
+			let diff =
+				readableDiff(action, effect.0)
+				.map { "\($0.indent(by: 4))\n\n(Expected: −, Received: +)" }
+				?? """
+				Expected:
+				\(String(describing: action).indent(by: 2))
+				
+				Received:
+				\(String(describing: effect.0).indent(by: 2))
+				"""
+			
+			XCTFail(
+				"""
+				Received unexpected action: …
+				
+				\(diff)
+				""",
+				file: file,
+				line: line
+			)
+			return
+		}
+		recievedEffects.removeFirst()
+	}
+	
 	struct TrackableEffect: Hashable {
+		let initialAction: Action
 		let id = UUID()
 		let file: StaticString
 		let line: UInt
@@ -85,66 +221,27 @@ public final class TestStore<State: Equatable, Action, Environment>: ObservableO
 		static func == (lhs: Self, rhs: Self) -> Bool {
 			lhs.id == rhs.id
 		}
-
+		
 		func hash(into hasher: inout Hasher) {
 			self.id.hash(into: &hasher)
 		}
 	}
 	
-	@discardableResult
-	public func assert(
-		_ action: Action,
-		file: StaticString = #file,
-		line: UInt = #line,
-		stateChanges: ((_ original: inout State) -> ()) = { _ in }
-	) -> Self {
-		if effects.count > effectTolerance {
-			XCTFail(
-				"""
-				\(effectTolerance - effects.count) effects must be accounted for \
-				to pass the effect tolerance of \(effectTolerance)
-				
-				Unhandled actions: \(debugOutput(effects))
-				""",
-				file: file,
-				line: line
-			)
-		}
-		// bufferedAction logic?
-		
-		var expectation = state
-		stateChanges(&expectation)
-		var didComplete = false
-		let id = TrackableEffect.init(file: file, line: line)
-		let effect = self.reducer(&state, action, environment)
-		let effectCancellable = effect.sink(
-			receiveCompletion: { [weak self] _ in
-				didComplete = true
-				self?.effects[id] = nil
-			},
-			receiveValue: { [weak self] action in
-				self?.assert(action)
-			}
-		)
-		
-		if !didComplete {
-			self.effects[id] = effectCancellable
-		}
-		
-		assertEqual(expected: expectation, actual: state)
-		
-		return self
+	/// Callback for derived state changes equated on state changes and declaration
+	public func observe<LocalState: Equatable>(
+		_ get: @escaping (State) -> LocalState,
+		onChange callback: @escaping (LocalState) -> ()
+	) {
+		$state
+			.map { get($0) }
+			.removeDuplicates(by: { $0 == $1 })
+			.sink { callback($0) }
+			.store(in: &cancellables)
 	}
-	
-//	public func recieve(
-//		_ action: Action,
-//		file: StaticString = #file,
-//		line: UInt8 = #line
-//	) {
-//		
-//	}
-	
-	// MARK: Derived
+}
+
+// MARK: Derived
+extension TestStore {
 	/// Derived store that observes and sends changes to its parent
 	public func derived<LocalState, LocalAction, LocalEnvironment>(
 		state toLocalState: @escaping (State) -> LocalState,
@@ -169,7 +266,7 @@ public final class TestStore<State: Equatable, Action, Environment>: ObservableO
 			}.store(in: &cancellables)
 		return localStore
 	}
-
+	
 	/// Derived store that only listsens to state
 	public func derived<LocalState>(
 		state toLocalState: @escaping (State) -> LocalState
@@ -180,7 +277,7 @@ public final class TestStore<State: Equatable, Action, Environment>: ObservableO
 			env: { _ in }
 		)
 	}
-
+	
 	/// Derived store that gets and sets local state
 	/// - note: Resulting type is know as a StoreBinding
 	public func derived<LocalState: Equatable>(

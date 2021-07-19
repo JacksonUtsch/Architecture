@@ -84,11 +84,11 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
 	
 	private var bufferedActions: [Action] = []
 	private var isSending = false
-
+	
 	func send(_ action: Action) {
 		self.bufferedActions.append(action)
 		guard !self.isSending else { return }
-
+		
 		self.isSending = true
 		var currentState = self.state
 		defer {
@@ -99,7 +99,7 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
 		while !self.bufferedActions.isEmpty {
 			let action = self.bufferedActions.removeFirst()
 			let effect = self.reducer(&currentState, action, environment)
-
+			
 			var didComplete = false
 			let uuid = UUID()
 			let effectCancellable = effect.sink(
@@ -111,27 +111,27 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
 					self?.send(action)
 				}
 			)
-
+			
 			if !didComplete {
 				self.effectCancellables[uuid] = effectCancellable
 			}
 		}
 	}
 	
-//	public func send(_ action: Action) {
-//		let tempState = state
-//		let effect = reducer(&state, action, environment)
-//
-//		effect
-//			.sink { [weak self] result in
-//				self?.send(result)
-//			}.store(in: &cancellables)
-//
-//		#if DEBUG
-//		onAction?(action)
-//		onStateChange?(tempState, state)
-//		#endif
-//	}
+	//	public func send(_ action: Action) {
+	//		let tempState = state
+	//		let effect = reducer(&state, action, environment)
+	//
+	//		effect
+	//			.sink { [weak self] result in
+	//				self?.send(result)
+	//			}.store(in: &cancellables)
+	//
+	//		#if DEBUG
+	//		onAction?(action)
+	//		onStateChange?(tempState, state)
+	//		#endif
+	//	}
 }
 
 // MARK: Observe

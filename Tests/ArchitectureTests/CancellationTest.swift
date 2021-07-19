@@ -97,7 +97,7 @@ final class CancellationTest: XCTestCase {
 				}
 			}, environment: ()
 		)
-		store.assert(.inc, stateChanges: { $0 + 1 })
+		store.assert(.inc, mutates: { $0 += 1 })
 		
 		store.assert(.delayInc)
 		store.assert(.cancel)
