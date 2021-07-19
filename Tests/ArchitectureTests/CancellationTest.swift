@@ -42,20 +42,20 @@ final class CancellationTest: XCTestCase {
 	}
 	
 	func testCancellationFromStore() {
-		let sch = DispatchQueue.test
+		let scheduler = DispatchQueue.test
 		struct CanelID: Hashable { }
 		enum LocalAction {
 			case delayInc
 			case inc
 			case cancel
 		}
-		let store = Store<Int, LocalAction, Void>(
+		let store = Store<Int, LocalAction, AnySchedulerOf<DispatchQueue>>(
 			initialState: 0,
-			reducer: { s, a, _ in
+			reducer: { s, a, e in
 				switch a {
 				case .delayInc:
 					return .just(value: LocalAction.inc)
-						.defered(for: 5.0, on: sch)
+						.defered(for: 5.0, on: e)
 						.cancellable(id: CanelID())
 				case .inc:
 					s += 1
@@ -63,12 +63,12 @@ final class CancellationTest: XCTestCase {
 				case .cancel:
 						return .cancel(id: CanelID())
 				}
-			}, environment: ()
+			}, environment: scheduler.eraseToAnyScheduler()
 		)
 		
 		store.send(.delayInc)
 		store.send(.cancel)
-		sch.advance(by: 5.0)
+		scheduler.advance(by: 5.0)
 		XCTAssertEqual(store.state, 0)
 	}
 	
