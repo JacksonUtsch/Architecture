@@ -97,3 +97,10 @@ extension Bool {
 		return false
 	}
 }
+
+#if DEBUG
+// MARK: Static UUID
+extension UUID {
+	public static let deadbeef = UUID.init(uuidString: "DEADBEEF-DEAD-BEEF-DEAD-BEEFBEEFDEAD")!
+}
+#endif

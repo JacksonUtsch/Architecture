@@ -11,12 +11,6 @@ import SwiftUI
 import Combine
 import XCTestDynamicOverlay
 
-/*
-send action: { state mutates }
-effect gives subaction 1 { state mutates }
-effect gives subaction 2 { state mutates } .. effect completes
-*/
-
 /// TestStores should be constructed in the scope of a singular test so they can deinit
 public final class TestStore<State: Equatable, Action: Equatable, Environment>: ObservableObject {
 	@UniquePublished public internal(set) var state: State
@@ -127,7 +121,7 @@ public final class TestStore<State: Equatable, Action: Equatable, Environment>: 
 				line: line
 			)
 		}
-				
+		
 		var expectation = state
 		expectedMutation(&expectation)
 		var didComplete = false
@@ -166,7 +160,7 @@ public final class TestStore<State: Equatable, Action: Equatable, Environment>: 
 		return self
 	}
 	
-	// MARK: assertReceived
+	// MARK: AssertReceived
 	public func assertReceived(
 		_ action: Action,
 		file: StaticString = #file,
@@ -242,51 +236,52 @@ public final class TestStore<State: Equatable, Action: Equatable, Environment>: 
 }
 
 // MARK: Derived
-extension TestStore {
-	/// Derived store that observes and sends changes to its parent
-	public func derived<LocalState, LocalAction, LocalEnvironment>(
-		state toLocalState: @escaping (State) -> LocalState,
-		action fromLocalAction: @escaping (LocalAction) -> Action,
-		env toLocalEnvironment: @escaping (Environment) -> LocalEnvironment
-	) -> TestStore<LocalState, LocalAction, LocalEnvironment> {
-		var isSendingUp = false
-		let localStore = TestStore<LocalState, LocalAction, LocalEnvironment>(
-			initialState: toLocalState(self.state),
-			reducer: { localState, localAction, localEnvironment in
-				defer { isSendingUp = false }
-				isSendingUp = true
-				self.assert(fromLocalAction(localAction))
-				localState = toLocalState(self.state)
-				return .none
-			}, environment: toLocalEnvironment(environment)
-		)
-		self.$state
-			.sink { [weak localStore] newState in
-				guard !isSendingUp else { return }
-				localStore?.state = toLocalState(newState)
-			}.store(in: &cancellables)
-		return localStore
-	}
-	
-	/// Derived store that only listsens to state
-	public func derived<LocalState>(
-		state toLocalState: @escaping (State) -> LocalState
-	) -> TestStore<LocalState, Never, Void> {
-		return derived(
-			state: toLocalState,
-			action: { $0 },
-			env: { _ in }
-		)
-	}
-	
-	/// Derived store that gets and sets local state
-	/// - note: Resulting type is know as a StoreBinding
-	public func derived<LocalState: Equatable>(
-		get: @escaping (State) -> LocalState,
-		set: @escaping (LocalState) -> Action) -> TestStore<LocalState, LocalState, Void> {
-		return derived(state: get, action: set, env: { _ in })
-	}
-}
+//extension TestStore {
+//	/// Derived store that observes and sends changes to its parent
+//	/// - Note: Non-functioning due to assert logic
+//	public func derived<LocalState, LocalAction, LocalEnvironment>(
+//		state toLocalState: @escaping (State) -> LocalState,
+//		action fromLocalAction: @escaping (LocalAction) -> Action,
+//		env toLocalEnvironment: @escaping (Environment) -> LocalEnvironment
+//	) -> TestStore<LocalState, LocalAction, LocalEnvironment> {
+//		var isSendingUp = false
+//		let localStore = TestStore<LocalState, LocalAction, LocalEnvironment>(
+//			initialState: toLocalState(self.state),
+//			reducer: { localState, localAction, localEnvironment in
+//				defer { isSendingUp = false }
+//				isSendingUp = true
+//				self.assert(fromLocalAction(localAction))
+//				localState = toLocalState(self.state)
+//				return .none
+//			}, environment: toLocalEnvironment(environment)
+//		)
+//		self.$state
+//			.sink { [weak localStore] newState in
+//				guard !isSendingUp else { return }
+//				localStore?.state = toLocalState(newState)
+//			}.store(in: &cancellables)
+//		return localStore
+//	}
+//
+//	/// Derived store that only listsens to state
+//	public func derived<LocalState>(
+//		state toLocalState: @escaping (State) -> LocalState
+//	) -> TestStore<LocalState, Never, Void> {
+//		return derived(
+//			state: toLocalState,
+//			action: { $0 },
+//			env: { _ in }
+//		)
+//	}
+//
+//	/// Derived store that gets and sets local state
+//	/// - note: Resulting type is know as a StoreBinding
+//	public func derived<LocalState: Equatable>(
+//		get: @escaping (State) -> LocalState,
+//		set: @escaping (LocalState) -> Action) -> TestStore<LocalState, LocalState, Void> {
+//		return derived(state: get, action: set, env: { _ in })
+//	}
+//}
 
 // MARK: Binding
 extension TestStore {
