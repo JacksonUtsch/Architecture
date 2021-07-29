@@ -13,7 +13,7 @@ import Combine
 @available(iOS 13, macOS 10.15, *)
 public class Store<State: Equatable, Action, Environment>: ObservableObject {
 	@UniquePublished public internal(set) var state: State
-	internal let environment: Environment
+	public let environment: Environment
 	internal let reducer: (inout State, Action, Environment) -> AnyPublisher<Action, Never>
 	private var effectCancellables: [UUID: AnyCancellable] = [:]
 	private var cancellables: Set<AnyCancellable> = []
