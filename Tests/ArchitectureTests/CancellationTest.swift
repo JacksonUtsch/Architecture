@@ -54,7 +54,8 @@ final class CancellationTest: XCTestCase {
 			reducer: { s, a, e in
 				switch a {
 				case .delayInc:
-					return .just(value: LocalAction.inc)
+					return Just(LocalAction.inc)
+						.eraseToAnyPublisher()
 						.defered(for: 5.0, on: e)
 						.cancellable(id: CanelID())
 				case .inc:
@@ -85,7 +86,8 @@ final class CancellationTest: XCTestCase {
 			reducer: { s, a, e in
 				switch a {
 				case .delayInc:
-					return .just(value: LocalAction.inc)
+					return Just(LocalAction.inc)
+						.eraseToAnyPublisher()
 						.defered(for: 5.0, on: e)
 						.cancellable(id: CanelID())
 				case .inc:

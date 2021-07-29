@@ -42,12 +42,6 @@ extension Optional where Wrapped: Combine.Publisher {
 	}
 }
 
-extension AnyPublisher {
-	public static func just<T>(value: T) -> AnyPublisher<T, Never> {
-		Just(value).eraseToAnyPublisher()
-	}
-}
-
 // MARK: Deferred
 extension AnyPublisher {
 	public func defered<S: Scheduler>(
