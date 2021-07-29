@@ -85,7 +85,7 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
 	private var bufferedActions: [Action] = []
 	private var isSending = false
 	
-	func send(_ action: Action) {
+	public func send(_ action: Action) {
 		self.bufferedActions.append(action)
 		guard !self.isSending else { return }
 		
@@ -116,22 +116,7 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
 				self.effectCancellables[uuid] = effectCancellable
 			}
 		}
-	}
-	
-	//	public func send(_ action: Action) {
-	//		let tempState = state
-	//		let effect = reducer(&state, action, environment)
-	//
-	//		effect
-	//			.sink { [weak self] result in
-	//				self?.send(result)
-	//			}.store(in: &cancellables)
-	//
-	//		#if DEBUG
-	//		onAction?(action)
-	//		onStateChange?(tempState, state)
-	//		#endif
-	//	}
+	}	
 }
 
 // MARK: Observe

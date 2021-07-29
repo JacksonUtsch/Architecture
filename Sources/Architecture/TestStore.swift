@@ -73,6 +73,11 @@ public final class TestStore<State: Equatable, Action: Equatable, Environment>: 
 	}
 	
 	deinit {
+		print("TestStore.deinit")
+		assertEnd()
+	}
+	
+	public func assertEnd() {
 		// accounts for recieved actions
 		if recievedEffects.count > effectTolerance {
 			XCTFail(
@@ -81,7 +86,9 @@ public final class TestStore<State: Equatable, Action: Equatable, Environment>: 
 				action\(self.recievedEffects.count == 1 ? "" : "s") after this one: …
 				
 				Unhandled actions: \(debugOutput(self.recievedEffects.map { $0.0 }))
-				"""
+				""",
+				file: file,
+				line: line
 			)
 		}
 		
