@@ -26,7 +26,9 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
 		self.state = initialState
 		self.reducer = reducer
 		self.environment = environment
+		#if DEBUG
 		defaultDebug()
+		#endif
 	}
 	
 	private convenience init?(
