@@ -6,7 +6,6 @@
 //  Modified by Jackson Utsch on 7/14/21.
 //
 
-#if DEBUG
 import XCTest
 
 public func readableDiff<T>(_ before: T, _ after: T, printer: (T) -> String = { debugOutput($0) }) -> String? {
@@ -287,5 +286,4 @@ extension SFSpeechRecognizerAuthorizationStatus: CustomDebugOutputConvertible {
 		}
 	}
 }
-#endif
 #endif
