@@ -9,7 +9,7 @@ import SwiftUI
 
 public struct IfLetStore<State: Equatable, Action, Environment, Content>: View where Content: View {
 	private let content: (Store<State?, Action, Environment>) -> Content
-	private let store: Store<State?, Action, Environment>
+	@ObservedObject private var store: Store<State?, Action, Environment>
 	
 	/// Initializes an `IfLetStore` view that computes content depending on if a store of optional
 	/// state is `nil` or non-`nil`.
