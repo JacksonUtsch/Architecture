@@ -8,6 +8,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import CustomDump
 
 // MARK: Store
 @available(iOS 13, macOS 10.15, *)
@@ -26,7 +27,9 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
 		self.state = initialState
 		self.reducer = reducer
 		self.environment = environment
+		#if DEBUG
 		defaultDebug()
+		#endif
 	}
 	
 	private convenience init?(
@@ -62,14 +65,16 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
 	private var onStateChange: ((State, State) -> ())?
 	
 	public func defaultDebug() {
-		onAction = { print(String(describing: $0)) }
+		onAction = { customDump($0) }
 		onStateChange = {
 			// background thread async
-			if let diff = readableDiff($0, $1) {
-				print(diff)
+//			_,_ in
+			if let diff = diff($0, $1) {
+				customDump(diff)
 			}
 		}
 	}
+	#endif
 	
 	/// Establish debugging preferences here
 	/// - note: Can use readableDiff(...) for utility
@@ -77,15 +82,18 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
 		actions: @escaping (Action) -> (),
 		stateChanges: @escaping (State, State) -> ()
 	) {
+		#if DEBUG
 		self.onAction = actions
 		self.onStateChange = stateChanges
+		#endif
 	}
-	#endif
-	
 	private var bufferedActions: [Action] = []
 	private var isSending = false
 	
 	public func send(_ action: Action) {
+		#if DEBUG
+		onAction?(action)
+		#endif
 		self.bufferedActions.append(action)
 		guard !self.isSending else { return }
 		
@@ -98,7 +106,11 @@ public class Store<State: Equatable, Action, Environment>: ObservableObject {
 		
 		while !self.bufferedActions.isEmpty {
 			let action = self.bufferedActions.removeFirst()
+			let oldState = currentState
 			let effect = self.reducer(&currentState, action, environment)
+			#if DEBUG
+			onStateChange?(oldState, currentState)
+			#endif
 			
 			var didComplete = false
 			let uuid = UUID()

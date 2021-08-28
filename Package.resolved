@@ -20,6 +20,15 @@
         }
       },
       {
+        "package": "swift-custom-dump",
+        "repositoryURL": "https://github.com/pointfreeco/swift-custom-dump",
+        "state": {
+          "branch": "0.1.2",
+          "revision": "8655495733d8c712db8d9078f47d17f3555db79f",
+          "version": null
+        }
+      },
+      {
         "package": "swift-identified-collections",
         "repositoryURL": "https://github.com/pointfreeco/swift-identified-collections",
         "state": {
@@ -33,8 +42,8 @@
         "repositoryURL": "https://github.com/pointfreeco/xctest-dynamic-overlay",
         "state": {
           "branch": null,
-          "revision": "603974e3909ad4b48ba04aad7e0ceee4f077a518",
-          "version": "0.1.0"
+          "revision": "50a70a9d3583fe228ce672e8923010c8df2deddd",
+          "version": "0.2.1"
         }
       }
     ]

@@ -18,6 +18,7 @@ let package = Package(
   ],
   dependencies: [
     .package(url: "https://github.com/pointfreeco/combine-schedulers", .branch("0.5.0")),
+		.package(url: "https://github.com/pointfreeco/swift-custom-dump", .branch("0.1.2")),
 		.package(url: "https://github.com/pointfreeco/swift-identified-collections", .branch("0.1.1")),
   ],
   targets: [
@@ -25,11 +26,13 @@ let package = Package(
       name: "Architecture",
       dependencies: [
 				.product(name: "CombineSchedulers", package: "combine-schedulers"),
+				.product(name: "CustomDump", package: "swift-custom-dump"),
 				.product(name: "IdentifiedCollections", package: "swift-identified-collections")
 			]
 		),
     .testTarget(
       name: "ArchitectureTests",
-      dependencies: ["Architecture"]),
+      dependencies: ["Architecture"]
+		),
   ]
 )

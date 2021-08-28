@@ -10,6 +10,7 @@ import Foundation
 import SwiftUI
 import Combine
 import XCTestDynamicOverlay
+import CustomDump
 
 /// TestStores should be constructed in the scope of a singular test so they can deinit
 public final class TestStore<State: Equatable, Action: Equatable, Environment>: ObservableObject {
@@ -85,7 +86,7 @@ public final class TestStore<State: Equatable, Action: Equatable, Environment>: 
 				The store received \(self.recievedEffects.count) unexpected \
 				action\(self.recievedEffects.count == 1 ? "" : "s") after this one: …
 				
-				Unhandled actions: \(debugOutput(self.recievedEffects.map { $0.0 }))
+				Unhandled actions: \(customDump(self.recievedEffects.map { $0.0 }))
 				""",
 				file: file,
 				line: line
@@ -122,7 +123,7 @@ public final class TestStore<State: Equatable, Action: Equatable, Environment>: 
 				\(recievedEffects.count - effectTolerance) effect\(inFlightEffects.count - effectTolerance == 1 ? "" : "s") must be accounted for \
 				to pass the effect tolerance of \(effectTolerance)
 				
-				Unhandled actions: \(debugOutput(recievedEffects))
+				Unhandled actions: \(customDump(recievedEffects))
 				""",
 				file: file,
 				line: line
@@ -187,15 +188,15 @@ public final class TestStore<State: Equatable, Action: Equatable, Environment>: 
 		
 		if effect.action != action {
 			let diff =
-				readableDiff(action, effect.0)
-				.map { "\($0.indent(by: 4))\n\n(Expected: −, Received: +)" }
-				?? """
-				Expected:
-				\(String(describing: action).indent(by: 2))
-				
-				Received:
-				\(String(describing: effect.0).indent(by: 2))
-				"""
+				diff(action, effect.0)
+//				.map { "\($0.indent(by: 4))\n\n(Expected: −, Received: +)" }
+//				?? """
+//				Expected:
+//				\(String(describing: action).indent(by: 2))
+//
+//				Received:
+//				\(String(describing: effect.0).indent(by: 2))
+//				"""
 			
 			XCTFail(
 				"""
@@ -348,14 +349,14 @@ public func assertEqual<T: Equatable>(
 ) {
 	if expected != actual {
 		let diff =
-			readableDiff(expected, actual)
-			.map { "\($0.indent(by: 2))\n\n(Expected: −, Actual: +)" }
-			?? """
-						Expected:
-						\(String(describing: expected).indent(by: 2))
-						Actual:
-						\(String(describing: actual).indent(by: 2))
-						"""
+			diff(expected, actual)
+//			.map { "\($0.indent(by: 2))\n\n(Expected: −, Actual: +)" }
+//			?? """
+//						Expected:
+//						\(String(describing: expected).indent(by: 2))
+//						Actual:
+//						\(String(describing: actual).indent(by: 2))
+//						"""
 		
 		XCTFail(
 			"""
