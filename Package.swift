@@ -17,8 +17,8 @@ let package = Package(
 		),
   ],
   dependencies: [
-    .package(url: "https://github.com/JacksonUtsch/combine-schedulers", .branch("main")),
-		.package(url: "https://github.com/pointfreeco/swift-identified-collections", .branch("0.1.1")),
+    .package(url: "https://github.com/pointfreeco/combine-schedulers", .upToNextMajor(from: "0.5.3")),
+		.package(url: "https://github.com/pointfreeco/swift-identified-collections", .upToNextMajor(from: "0.3.2")),
   ],
   targets: [
     .target(
