@@ -19,6 +19,7 @@ let package = Package(
   dependencies: [
     .package(url: "https://github.com/pointfreeco/combine-schedulers", .branch("0.5.0")),
 		.package(url: "https://github.com/pointfreeco/swift-identified-collections", .branch("0.1.1")),
+    .package(url: "https://github.com/pointfreeco/xctest-dynamic-overlay", .branch("0.2.0")),
   ],
   targets: [
     .target(
